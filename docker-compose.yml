@@ -1,0 +1,31 @@
+name: max-students
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /app/data/max_students.sqlite3
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8000}:8000"
+    volumes:
+      - max_data:/app/data
+    networks:
+      default:
+      max_edge:
+        aliases:
+          - max-students-app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  max_data:
+networks:
+  max_edge:
+    internal: true

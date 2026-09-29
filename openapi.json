@@ -1,0 +1,2360 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MAX Foreign Students API",
+    "description": "Stateful student roadmap. Demo editor roles and rule changes are explicitly modelled.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://max.market-kit.ru"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Config",
+        "operationId": "config_api_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/max": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Max Auth",
+        "operationId": "max_auth_api_auth_max_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/demo": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Demo Auth",
+        "operationId": "demo_auth_api_auth_demo_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/editor": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Editor Auth",
+        "operationId": "editor_auth_api_auth_editor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/profile": {
+      "get": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_api_me_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Remove Profile",
+        "operationId": "remove_profile_api_me_profile_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Update Profile",
+        "operationId": "update_profile_api_me_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Profile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/roadmap": {
+      "get": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Roadmap",
+        "operationId": "roadmap_api_me_roadmap_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/tasks/{task_key}/status": {
+      "patch": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Change Status",
+        "operationId": "change_status_api_me_tasks__task_key__status_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskStatus"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/events": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_api_me_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Post Event",
+        "operationId": "post_event_api_me_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/events/{event_id}": {
+      "delete": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Retract Event",
+        "operationId": "retract_event_api_me_events__event_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/history/{revision_id}": {
+      "get": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "History Revision",
+        "operationId": "history_revision_api_me_history__revision_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "revision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Revision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/history": {
+      "get": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "History",
+        "operationId": "history_api_me_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/candidates": {
+      "post": {
+        "tags": [
+          "Language"
+        ],
+        "summary": "Candidate",
+        "operationId": "candidate_api_me_candidates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/candidates/{candidate_id}/confirm": {
+      "post": {
+        "tags": [
+          "Language"
+        ],
+        "summary": "Confirm Candidate",
+        "operationId": "confirm_candidate_api_me_candidates__candidate_id__confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rules": {
+      "get": {
+        "tags": [
+          "University"
+        ],
+        "summary": "List Rules",
+        "operationId": "list_rules_api_admin_rules_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Create Rule",
+        "operationId": "create_rule_api_admin_rules_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rules/{rule_id}/versions/{version}": {
+      "patch": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Edit Draft",
+        "operationId": "edit_draft_api_admin_rules__rule_id__versions__version__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rules/{rule_id}/versions/{version}/validate": {
+      "post": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Validate Draft",
+        "operationId": "validate_draft_api_admin_rules__rule_id__versions__version__validate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rules/{rule_id}/versions/{version}/preview": {
+      "post": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_api_admin_rules__rule_id__versions__version__preview_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rules/{rule_id}/versions/{version}/publish": {
+      "post": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Publish",
+        "operationId": "publish_api_admin_rules__rule_id__versions__version__publish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rules/{rule_id}/versions/{version}/archive": {
+      "post": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Archive",
+        "operationId": "archive_api_admin_rules__rule_id__versions__version__archive_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/publications": {
+      "get": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Publications",
+        "operationId": "publications_api_admin_publications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/admin/notifications": {
+      "get": {
+        "tags": [
+          "University"
+        ],
+        "summary": "Notifications",
+        "operationId": "notifications_api_admin_notifications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/max/webhook": {
+      "post": {
+        "tags": [
+          "MAX"
+        ],
+        "summary": "Webhook",
+        "operationId": "webhook_api_max_webhook_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthRequest": {
+        "properties": {
+          "init_data": {
+            "type": "string",
+            "maxLength": 12000,
+            "title": "Init Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "init_data"
+        ],
+        "title": "AuthRequest"
+      },
+      "AuthResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "university_editor",
+              "maintainer"
+            ],
+            "title": "Role"
+          },
+          "tenant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant"
+          },
+          "demo_model": {
+            "type": "boolean",
+            "title": "Demo Model"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type",
+          "role",
+          "tenant",
+          "demo_model"
+        ],
+        "title": "AuthResponse"
+      },
+      "CandidateConfirm": {
+        "properties": {
+          "occurred_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Occurred At"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EventPayload"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Confirmed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "occurred_at",
+          "payload",
+          "idempotency_key",
+          "confirmed"
+        ],
+        "title": "CandidateConfirm"
+      },
+      "DeadlineSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "legal_deadline",
+              "university_submission_deadline",
+              "preparation_start",
+              "document_expiry"
+            ],
+            "title": "Kind"
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "state",
+              "university",
+              "product",
+              "user"
+            ],
+            "title": "Owner"
+          },
+          "required_or_recommended": {
+            "type": "string",
+            "enum": [
+              "required",
+              "recommended_by_university",
+              "product_sorting",
+              "unspecified",
+              "document_fact"
+            ],
+            "title": "Required Or Recommended"
+          },
+          "anchor_field": {
+            "type": "string",
+            "enum": [
+              "entry_at",
+              "arrival_at",
+              "education_start",
+              "visa_expiry",
+              "registration_expiry",
+              "stay_expiry",
+              "last_medical_completed_at",
+              "occurred_at"
+            ],
+            "title": "Anchor Field"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 366.0,
+                "minimum": -366.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "calendar",
+              "working",
+              "hours",
+              "unspecified"
+            ],
+            "title": "Unit"
+          },
+          "literal": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "type": "object",
+            "title": "Literal"
+          },
+          "absolute_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absolute Date"
+          },
+          "uncertainty": {
+            "type": "string",
+            "title": "Uncertainty",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "owner",
+          "required_or_recommended",
+          "anchor_field",
+          "unit",
+          "literal"
+        ],
+        "title": "DeadlineSpec"
+      },
+      "EditorLogin": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "EditorLogin"
+      },
+      "EventInput": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "entry_recorded",
+              "reentry_recorded",
+              "address_changed",
+              "hotel_stay_started",
+              "hotel_stay_ended",
+              "visa_issued",
+              "registration_confirmed",
+              "medical_completed",
+              "fingerprinting_completed",
+              "passport_replaced",
+              "status_changed",
+              "enrolment_changed"
+            ],
+            "title": "Type"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Occurred At"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EventPayload"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Confirmed"
+          },
+          "supersedes_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Event Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "occurred_at",
+          "idempotency_key",
+          "confirmed"
+        ],
+        "title": "EventInput"
+      },
+      "EventPayload": {
+        "properties": {
+          "residence_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dorm",
+                  "private",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Residence Type"
+          },
+          "from_residence_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dorm",
+                  "private",
+                  "other",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Residence Type"
+          },
+          "entry_purpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "study",
+                  "other",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Purpose"
+          },
+          "visa_regime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "visa",
+                  "visa_free",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visa Regime"
+          },
+          "arrival_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival At"
+          },
+          "visa_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visa Expiry"
+          },
+          "registration_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Expiry"
+          },
+          "stay_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Expiry"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "study",
+                  "rvpo",
+                  "rvp",
+                  "residence_permit",
+                  "unknown",
+                  "active",
+                  "leave",
+                  "transferred",
+                  "expelled",
+                  "graduated",
+                  "working"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventPayload"
+      },
+      "EventResponse": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          },
+          "verification": {
+            "type": "string",
+            "const": "user_attested",
+            "title": "Verification"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "event_id",
+          "created",
+          "verification"
+        ],
+        "title": "EventResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PreviewResponse": {
+        "properties": {
+          "affected_count": {
+            "type": "integer",
+            "title": "Affected Count"
+          },
+          "affected": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Affected"
+          },
+          "preview_token": {
+            "type": "string",
+            "title": "Preview Token"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "affected_count",
+          "affected",
+          "preview_token"
+        ],
+        "title": "PreviewResponse"
+      },
+      "Profile": {
+        "properties": {
+          "university_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sutd",
+                  "leti"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "University Id"
+          },
+          "campus_id": {
+            "type": "string",
+            "enum": [
+              "main",
+              "vshte",
+              "other"
+            ],
+            "title": "Campus Id",
+            "default": "main"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "ru",
+              "en"
+            ],
+            "title": "Language",
+            "default": "ru"
+          },
+          "age_band": {
+            "type": "string",
+            "enum": [
+              "adult",
+              "minor",
+              "unknown"
+            ],
+            "title": "Age Band",
+            "default": "unknown"
+          },
+          "citizenship": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citizenship"
+          },
+          "visa_regime": {
+            "type": "string",
+            "enum": [
+              "visa",
+              "visa_free",
+              "unknown"
+            ],
+            "title": "Visa Regime",
+            "default": "unknown"
+          },
+          "migration_basis": {
+            "type": "string",
+            "enum": [
+              "study",
+              "rvpo",
+              "rvp",
+              "residence_permit",
+              "unknown"
+            ],
+            "title": "Migration Basis",
+            "default": "unknown"
+          },
+          "study_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "leave",
+              "transferred",
+              "expelled",
+              "graduated",
+              "working",
+              "unknown"
+            ],
+            "title": "Study Status",
+            "default": "unknown"
+          },
+          "study_form": {
+            "type": "string",
+            "enum": [
+              "full_time",
+              "part_time",
+              "unknown"
+            ],
+            "title": "Study Form",
+            "default": "unknown"
+          },
+          "stay_over_90_days": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Over 90 Days"
+          },
+          "residence_type": {
+            "type": "string",
+            "enum": [
+              "dorm",
+              "private",
+              "other",
+              "unknown"
+            ],
+            "title": "Residence Type",
+            "default": "unknown"
+          },
+          "planned_entry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Entry"
+          },
+          "education_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Education Start"
+          },
+          "entry_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry At"
+          },
+          "arrival_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival At"
+          },
+          "entry_purpose": {
+            "type": "string",
+            "enum": [
+              "study",
+              "other",
+              "unknown"
+            ],
+            "title": "Entry Purpose",
+            "default": "unknown"
+          },
+          "visa_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visa Expiry"
+          },
+          "registration_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Expiry"
+          },
+          "stay_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Expiry"
+          },
+          "last_medical_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Medical Completed At"
+          },
+          "fingerprinting_completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fingerprinting Completed"
+          },
+          "consent": {
+            "type": "boolean",
+            "title": "Consent",
+            "default": false
+          },
+          "reminders_enabled": {
+            "type": "boolean",
+            "title": "Reminders Enabled",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Profile"
+      },
+      "PublicationRequest": {
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Confirmed"
+          },
+          "preview_token": {
+            "type": "string",
+            "title": "Preview Token"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "confirmed",
+          "preview_token",
+          "idempotency_key"
+        ],
+        "title": "PublicationRequest"
+      },
+      "RoadmapResponse": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "decisions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decisions"
+          },
+          "effective_profile": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Effective Profile"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "demo_model": {
+            "type": "boolean",
+            "title": "Demo Model"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "tasks",
+          "decisions",
+          "effective_profile",
+          "timezone",
+          "demo_model"
+        ],
+        "title": "RoadmapResponse"
+      },
+      "RuleDraft": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_.-]{3,80}$",
+            "title": "Rule Id"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "M01",
+              "M02",
+              "M03",
+              "M04",
+              "M05",
+              "M06",
+              "M07",
+              "M08",
+              "M09",
+              "M10"
+            ],
+            "title": "Family"
+          },
+          "semantic_action_key": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 3,
+            "title": "Semantic Action Key"
+          },
+          "action_i18n": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "type": "object",
+            "title": "Action I18N"
+          },
+          "title_i18n": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "type": "object",
+            "title": "Title I18N"
+          },
+          "documents_i18n": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "type": "object",
+            "title": "Documents I18N"
+          },
+          "contact": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Contact"
+          },
+          "eligibility_predicate": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Eligibility Predicate"
+          },
+          "trigger_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "entry_recorded",
+                "reentry_recorded",
+                "address_changed",
+                "hotel_stay_started",
+                "hotel_stay_ended",
+                "visa_issued",
+                "registration_confirmed",
+                "medical_completed",
+                "fingerprinting_completed",
+                "passport_replaced",
+                "status_changed",
+                "enrolment_changed"
+              ]
+            },
+            "type": "array",
+            "title": "Trigger Types"
+          },
+          "deadline_specs": {
+            "items": {
+              "$ref": "#/components/schemas/DeadlineSpec"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Deadline Specs"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "public_official",
+              "employee_confirmed",
+              "demo_model"
+            ],
+            "title": "Source Type",
+            "default": "demo_model"
+          },
+          "source_url": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 8,
+            "title": "Source Url"
+          },
+          "source_title": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Source Title"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Checked At"
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective From"
+          },
+          "evidence_note": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Evidence Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule_id",
+          "family",
+          "semantic_action_key",
+          "action_i18n",
+          "title_i18n",
+          "documents_i18n",
+          "contact",
+          "source_url",
+          "source_title",
+          "checked_at",
+          "effective_from",
+          "evidence_note"
+        ],
+        "title": "RuleDraft"
+      },
+      "RulesResponse": {
+        "properties": {
+          "rules": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "tenant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "demo_model": {
+            "type": "boolean",
+            "title": "Demo Model"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "rules",
+          "tenant",
+          "role",
+          "demo_model"
+        ],
+        "title": "RulesResponse"
+      },
+      "TaskResponse": {
+        "properties": {
+          "task_key": {
+            "type": "string",
+            "title": "Task Key"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "rule_version": {
+            "type": "integer",
+            "title": "Rule Version"
+          },
+          "family": {
+            "type": "string",
+            "title": "Family"
+          },
+          "episode_id": {
+            "type": "string",
+            "title": "Episode Id"
+          },
+          "cycle_id": {
+            "type": "string",
+            "title": "Cycle Id"
+          },
+          "semantic_action_key": {
+            "type": "string",
+            "title": "Semantic Action Key"
+          },
+          "title_i18n": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Title I18N"
+          },
+          "action_i18n": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Action I18N"
+          },
+          "documents_i18n": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Documents I18N"
+          },
+          "contact": {
+            "type": "string",
+            "title": "Contact"
+          },
+          "dates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Dates"
+          },
+          "source_snapshot": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Source Snapshot"
+          },
+          "eligibility_decision": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string",
+                "const": "unknown"
+              }
+            ],
+            "title": "Eligibility Decision"
+          },
+          "engine_status": {
+            "type": "string",
+            "enum": [
+              "actionable",
+              "conditional",
+              "needs_review",
+              "requires_recheck",
+              "superseded"
+            ],
+            "title": "Engine Status"
+          },
+          "user_status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "completed"
+            ],
+            "title": "User Status"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "priority_bucket": {
+            "type": "string",
+            "enum": [
+              "now",
+              "soon",
+              "later"
+            ],
+            "title": "Priority Bucket"
+          },
+          "demo_model": {
+            "type": "boolean",
+            "title": "Demo Model"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "task_key",
+          "rule_id",
+          "rule_version",
+          "family",
+          "episode_id",
+          "cycle_id",
+          "semantic_action_key",
+          "title_i18n",
+          "action_i18n",
+          "documents_i18n",
+          "contact",
+          "dates",
+          "source_snapshot",
+          "eligibility_decision",
+          "engine_status",
+          "user_status",
+          "completed_at",
+          "priority_bucket",
+          "demo_model"
+        ],
+        "title": "TaskResponse"
+      },
+      "TaskStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "completed"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "TaskStatus"
+      },
+      "TextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 2,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TextRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

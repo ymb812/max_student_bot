@@ -1,0 +1,18 @@
+{
+  "incomplete": {
+    "profile": {"university_id": "sutd", "visa_regime": "visa", "residence_type": "dorm"},
+    "date_offsets": {"entry_at": -7}
+  },
+  "sutd_visa": {
+    "profile": {"university_id": "sutd", "age_band": "adult", "citizenship": "Тестовая страна / Test country", "visa_regime": "visa", "migration_basis": "study", "study_status": "active", "study_form": "full_time", "stay_over_90_days": true, "residence_type": "dorm", "entry_purpose": "study", "fingerprinting_completed": false},
+    "date_offsets": {"entry_at": -7, "education_start": -26, "visa_expiry": 67, "registration_expiry": 62, "stay_expiry": 67}
+  },
+  "sutd_visa_free": {
+    "profile": {"university_id": "sutd", "age_band": "adult", "citizenship": "Тестовая страна / Test country", "visa_regime": "visa_free", "migration_basis": "study", "study_status": "active", "study_form": "full_time", "stay_over_90_days": true, "residence_type": "private", "entry_purpose": "study", "fingerprinting_completed": true},
+    "date_offsets": {"entry_at": -14, "education_start": -26, "registration_expiry": 62, "stay_expiry": 76}
+  },
+  "leti_visa": {
+    "profile": {"university_id": "leti", "age_band": "adult", "citizenship": "Тестовая страна / Test country", "visa_regime": "visa", "migration_basis": "study", "study_status": "active", "study_form": "full_time", "stay_over_90_days": true, "residence_type": "dorm", "entry_purpose": "study", "fingerprinting_completed": false},
+    "date_offsets": {"entry_at": -7, "education_start": -26, "visa_expiry": 67, "registration_expiry": 62, "stay_expiry": 67}
+  }
+}

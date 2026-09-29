@@ -1,0 +1,12 @@
+# Temporary test-only HTTPS tunnel. Does not bind or change host ports 80/443.
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.1
+    command: tunnel --no-autoupdate --protocol http2 --url http://app:8000
+    restart: unless-stopped
+    depends_on:
+      - app
+    logging:
+      options:
+        max-size: "5m"
+        max-file: "2"

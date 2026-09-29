@@ -1,0 +1,5 @@
+# Append this host block to the existing shared Caddyfile after review.
+# Preserve all existing host blocks, certificates and upstreams.
+max.market-kit.ru {
+    reverse_proxy max-students-app:8000
+}

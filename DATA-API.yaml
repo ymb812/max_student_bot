@@ -1,0 +1,112 @@
+schema_version: "1.0"
+solution: "Рядом — MAX Foreign Students"
+# Permanent public HTTPS URL; MAX binding is performed by the organizers.
+base_url: "https://max.market-kit.ru"
+openapi: openapi.json
+authentication:
+  student: "POST /api/auth/max with signed init_data; browser testing: POST /api/auth/demo in DEMO_MODE"
+  university_editor_sutd: "POST /api/auth/editor; EDITOR_SUTD_KEY supplied privately"
+  university_editor_leti: "POST /api/auth/editor; EDITOR_LETI_KEY supplied privately"
+  headers: {Authorization: "Bearer ${session.access_token}"}
+test_data: {file: tests/fixtures/profiles.json, kind: synthetic, onboarding: "No automatic profile preload"}
+checks:
+  - name: health
+    role: anonymous
+    method: GET
+    path: /health
+    expected_status: [200]
+    response: {content_type: application/json, required: [status, version, bot_transport]}
+  - name: unauthenticated_profile
+    role: anonymous
+    method: GET
+    path: /api/me/profile
+    expected_status: [401]
+    response: {content_type: application/json, required: [detail]}
+  - name: empty_browser_profile
+    role: anonymous
+    method: POST
+    path: /api/auth/demo
+    parameters: {body: null}
+    expected_status: [200]
+    response: {content_type: application/json, required: [access_token, token_type, role, demo_model]}
+  - name: university_profile
+    role: student
+    method: PATCH
+    path: /api/me/profile
+    parameters: {headers: {Authorization: "Bearer ${student.access_token}"}, body: "${fixture.sutd_or_leti_profile}"}
+    expected_status: [200]
+    response: {content_type: application/json, required: [university_id, language, consent, residence_type]}
+  - name: dynamic_roadmap
+    role: student
+    method: GET
+    path: /api/me/roadmap
+    expected_status: [200]
+    response: {content_type: application/json, required: [tasks, decisions, effective_profile, timezone], task_required: [task_key, rule_version, dates, engine_status, user_status, source_snapshot]}
+  - name: move_and_recalculate
+    role: student
+    method: POST
+    path: /api/me/events
+    parameters:
+      body: {type: address_changed, occurred_at: "2026-09-27", payload: {from_residence_type: dorm, residence_type: private}, confirmed: true, idempotency_key: "${unique_move_key}"}
+    expected_status: [201]
+    response: {content_type: application/json, required: [event_id, created, verification, revision_id]}
+  - name: persist_task_status
+    role: student
+    method: PATCH
+    path: /api/me/tasks/{task_key}/status
+    parameters: {path: {task_key: "${roadmap.tasks[0].task_key}"}, body: {status: in_progress}}
+    expected_status: [200]
+    response: {content_type: application/json, required: [task_key, user_status, verification]}
+  - name: retract_event
+    role: student
+    method: DELETE
+    path: /api/me/events/{event_id}
+    parameters: {path: {event_id: "${move.event_id}"}}
+    expected_status: [200]
+    response: {content_type: application/json, required: [event_id, retracted, revision_id]}
+  - name: student_cannot_edit_rules
+    role: student
+    method: GET
+    path: /api/admin/rules
+    expected_status: [403]
+    response: {content_type: application/json, required: [detail]}
+  - name: local_rule_draft
+    role: university_editor_sutd
+    method: POST
+    path: /api/admin/rules
+    parameters: {body: "${generated_demo_rule_with_unique_citizenship_predicate}"}
+    expected_status: [201]
+    response: {content_type: application/json, required: [rule_id, version, source_type, university_id]}
+  - name: validate
+    role: university_editor_sutd
+    method: POST
+    path: /api/admin/rules/{rule_id}/versions/{version}/validate
+    parameters: {path: {rule_id: "${draft.rule_id}", version: "${draft.version}"}}
+    expected_status: [200]
+    response: {content_type: application/json, required: [validated, meaning, simulations]}
+  - name: affected_preview
+    role: university_editor_sutd
+    method: POST
+    path: /api/admin/rules/{rule_id}/versions/{version}/preview
+    parameters: {path: {rule_id: "${draft.rule_id}", version: "${draft.version}"}}
+    expected_status: [200]
+    response: {content_type: application/json, required: [affected_count, affected, preview_token]}
+  - name: publish_confirmed_version
+    role: university_editor_sutd
+    method: POST
+    path: /api/admin/rules/{rule_id}/versions/{version}/publish
+    parameters: {path: {rule_id: "${draft.rule_id}", version: "${draft.version}"}, body: {confirmed: true, preview_token: "${preview.preview_token}", idempotency_key: "${unique_publication_key}"}}
+    expected_status: [200]
+    response: {content_type: application/json, required: [publication_id, affected_count, change_label]}
+  - name: delivery_observation
+    role: university_editor_sutd
+    method: GET
+    path: /api/admin/notifications
+    expected_status: [200]
+    response: {content_type: application/json, required: [notifications]}
+  - name: delete_synthetic_profile
+    role: student
+    method: DELETE
+    path: /api/me/profile
+    expected_status: [200]
+    response: {content_type: application/json, required: [deleted]}

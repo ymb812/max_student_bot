@@ -1,0 +1,4 @@
+{
+  "sutd": {"university_id":"sutd","language":"ru","consent":true,"age_band":"adult","migration_basis":"study","study_status":"active","citizenship":"Synthetic country for tests","visa_regime":"visa","entry_at":"2026-09-01","entry_purpose":"study","stay_over_90_days":true,"residence_type":"dorm","visa_expiry":"2026-12-01","registration_expiry":"2026-12-01","fingerprinting_completed":false},
+  "leti": {"university_id":"leti","language":"en","consent":true,"age_band":"adult","migration_basis":"study","study_status":"active","citizenship":"Synthetic country for tests","visa_regime":"visa","entry_at":"2026-09-01","entry_purpose":"study","stay_over_90_days":true,"residence_type":"private","visa_expiry":"2026-12-01","registration_expiry":"2026-12-01","fingerprinting_completed":false}
+}
