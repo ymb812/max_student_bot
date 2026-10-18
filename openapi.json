@@ -1616,6 +1616,17 @@
             "title": "Language",
             "default": "ru"
           },
+          "arrival_status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "arrived",
+              "unknown"
+            ],
+            "title": "Arrival Status",
+            "description": "Presentation context only; does not record entry or change rule applicability.",
+            "default": "unknown"
+          },
           "age_band": {
             "type": "string",
             "enum": [

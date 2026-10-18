@@ -29,3 +29,19 @@ test('new episodes reopen progress and empty stages are not complete',()=>{
     const tasks=[task('old',{engine_status:'superseded',user_status:'completed'}),task('new',{episode_id:'entry-2'})];
     assert.equal(view.progress(tasks,'arrival').completed,0);
 });
+test('situation without an entry date is presentation only; actual entry and tasks take precedence',()=>{
+    assert.equal(view.currentStage([],{arrival_status:'arrived',entry_at:null}),'arrival');
+    assert.equal(view.currentStage([],{arrival_status:'planned',entry_at:null}),'before');
+    assert.equal(view.currentStage([task('office')],{arrival_status:'planned',entry_at:'2026-09-01'}),'arrival');
+    assert.equal(view.progress([],'before').done,false);
+});
+test('manual completion selects the next actual task and can be undone in an earlier stage',()=>{
+    const tasks=[task('border',{family:'M02'}),task('office')];
+    assert.equal(view.hero(tasks).task_key,'border');
+    tasks[0].user_status='completed';
+    assert.equal(view.hero(tasks).task_key,'office');
+    assert.equal(view.progress(tasks,'before').done,true);
+    tasks[0].user_status='not_started';
+    assert.equal(view.progress(tasks,'before').done,false);
+    assert.equal(view.hero(tasks).task_key,'border');
+});

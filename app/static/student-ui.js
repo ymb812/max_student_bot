@@ -1,8 +1,8 @@
 /* Screen state, navigation and rendering. Rule decisions remain on the server. */
-let route = {name: 'plan'}, dirty = false, arrivalMode = 'arrived', historyFilter = 'all';
+let route = {name: 'plan'}, dirty = false, historyFilter = 'all';
 let routeStack = [], rootScroll = {}, painting = 0;
 const requestedScreen = new URLSearchParams(location.search);
-const onboardingEventKey = crypto.randomUUID();
+const requestedNavigation = history.state;
 const stageNames = {before: ['До приезда', 'Before arrival'], arrival: ['После приезда', 'After arrival'], study: ['Во время учёбы', 'During your studies']};
 Object.assign(iconPaths, {
     back: '<path d="m14 5-7 7 7 7"/>',
@@ -32,32 +32,56 @@ function lockedStatusReason(t) {
     if(['conditional','needs_review'].includes(t.engine_status))return tr('Применимость не подтверждена. Уточните данные или обратитесь в офис; просмотр не подтверждает выполнение.','Applicability is unverified. Add information or consult the office; viewing this task does not complete it.');
     return tr('Статус установлен по записанному событию. Исправьте или отмените его в истории, чтобы изменить факт.','The status comes from a recorded event. Correct or retract it in History to change the fact.');
 }
+function languageControls() {
+    return `<div class="language-switch" role="group" aria-label="${tr('Язык приложения','App language')}">${['ru','en'].map(l=>`<button type="button" data-language="${l}" aria-pressed="${lang===l}" aria-label="${l==='ru'?'Русский':'English'}" class="${lang===l?'selected':''}">${l.toUpperCase()}</button>`).join('')}</div>`;
+}
 function shell(inner) {
     document.documentElement.lang = lang;
-const section = ['events', 'event', 'result'].includes(route.name) ? 'events' : ['profile', 'edit'].includes(route.name) ? 'profile' : 'plan';
+    const section = ['events', 'event', 'result'].includes(route.name) ? 'events' : ['profile', 'edit'].includes(route.name) ? 'profile' : 'plan';
     const nested = !['plan', 'profile', 'events'].includes(route.name);
-    const nav = `<nav class="bottom-tabs" aria-label="${tr('Основная навигация', 'Main navigation')}">${[['plan','plan','План','Plan'],['events','calendar','Событие','Event'],['profile','profile','Мои данные','My information']].map(([id, glyph, ru, en]) => `<button data-nav="${id}" class="${section===id?'active':''}" ${section===id?'aria-current="page"':''}>${icon(glyph,25)}<span>${tr(ru,en)}</span></button>`).join('')}</nav>`;
-    return `<div class="ryadom-shell"><header class="app-header">${profile.consent && nested ? `<button class="icon-button" data-back aria-label="${tr('Назад','Back')}">${icon('back',24)}</button>` : '<span class="brand-mark">↗</span>'}<span class="brand-name">${tr('Рядом','Ryadom')}</span><button id="mobile-language" class="language-button" aria-label="${tr('Switch to English','Переключить на русский')}">${lang==='ru'?'EN':'RU'}</button></header><main class="screen" id="screen">${plan.demo_model?`<div class="demo-notice"><span>${tr('Демо','Demo')}</span>${tr('Отдельный тестовый профиль','Separate test profile')}</div>`:''}${inner}</main>${profile.consent?nav:''}</div>`;
+    const back = profile.consent ? nested : step>0;
+    const nav = `<nav class="bottom-tabs" aria-label="${tr('Основная навигация', 'Main navigation')}">${[['plan','address','План','Plan'],['events','event','Событие','Event'],['profile','profile','Мои данные','My information']].map(([id, glyph, ru, en]) => `<button data-nav="${id}" class="${section===id?'active':''}" ${section===id?'aria-current="page"':''}><span class="nav-icon">${icon(glyph,21)}</span><span>${tr(ru,en)}</span></button>`).join('')}</nav>`;
+    return `<div class="ryadom-shell ${!profile.consent?'is-onboarding':''}"><header class="app-header">${back?`<button class="back-button" data-back aria-label="${tr('Назад','Back')}">${icon('back',20)}<span>${tr('Назад','Back')}</span></button>`:`<span class="app-brand"><img src="/static/ryadom-logo.svg" width="29" height="29" alt=""><span class="brand-name">${tr('Рядом','Ryadom')}</span></span>`}${languageControls()}</header><main class="screen" id="screen">${inner}</main>${profile.consent?nav:''}</div>`;
+}
+function wireLanguageControls() {
+    document.querySelectorAll('[data-language]').forEach(b=>b.onclick=guard(()=>switchLanguage(b.dataset.language)));
 }
 function wireShell() {
     document.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navigate({name:b.dataset.nav}));
     document.querySelector('[data-back]')?.addEventListener('click', goBack);
-    document.querySelector('#mobile-language')?.addEventListener('click', guard(async () => {
-        if (dirty) { confirmLeave(() => switchLanguage()); return; }
-        await switchLanguage();
-    }));
+    wireLanguageControls();
     const backButton = window.WebApp?.BackButton;
     if (backButton) {
         backButton.offClick?.(goBack);
-        if (profile.consent && !['plan','events','profile'].includes(route.name)) {backButton.show?.();backButton.onClick?.(goBack);}
+        if ((profile.consent && !['plan','events','profile'].includes(route.name)) || (!profile.consent && step>0)) {backButton.show?.();backButton.onClick?.(goBack);}
         else backButton.hide?.();
     }
+}
+// Drafts are scoped to the authenticated browser session, never used as server facts.
+function formDraftKey() { return 'ryadom_form_' + token + '_' + [route.name,route.key,route.field,route.type,route.original?.id].join('|'); }
+function captureFormDraft() {
+    const form = root.querySelector('#event-form,#field-form');
+    return form ? [...form.querySelectorAll('input,select,textarea'),...root.querySelectorAll('#event-text')].map(el=>({value:el.value,checked:el.checked})) : null;
+}
+function restoreFormDraft(draft) {
+    const form = root.querySelector('#event-form,#field-form');
+    if (!form || !draft) return;
+    [...form.querySelectorAll('input,select,textarea'),...root.querySelectorAll('#event-text')].forEach((el,i)=>{if(draft[i]) {el.value=draft[i].value;if('checked' in el)el.checked=draft[i].checked;}});
+    form.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function clearFormDraft() { sessionStorage.removeItem(formDraftKey()); }
+function clearSessionDrafts() {
+    for(const key of Object.keys(sessionStorage))if(key.startsWith('ryadom_form_'+token+'_')||key===onboardingStorageKey())sessionStorage.removeItem(key);
+}
+function restoreStoredFormDraft() {
+    let saved;try {saved=JSON.parse(sessionStorage.getItem(formDraftKey()));}catch {return;}
+    if(saved)restoreFormDraft(saved);
 }
 function confirmLeave(action) {
     if (!dirty) { action(); return; }
     showModal(`<h2>${tr('Не сохранять изменения?','Discard changes?')}</h2><p>${tr('Черновик ещё не записан.','Your draft has not been saved.')}</p><div class="actions"><button class="primary" id="keep-editing">${tr('Продолжить редактирование','Keep editing')}</button><button class="secondary" id="discard-draft">${tr('Не сохранять','Discard')}</button></div>`);
     document.querySelector('#keep-editing').onclick = () => modal.close();
-    document.querySelector('#discard-draft').onclick = () => { dirty = false; modal.close(); action(); };
+    document.querySelector('#discard-draft').onclick = () => { clearFormDraft(); dirty = false; modal.close(); action(); };
 }
 function writeLocation(replace=false) {
     const url = new URL(location.href);
@@ -80,12 +104,14 @@ function navigate(next, replace=false) {
     });
 }
 function goBack() {
+    if(!profile.consent) {if(step>0)history.back();return;}
     confirmLeave(() => {
         const next = route.name === 'result' ? {name:'plan'} : routeStack.pop() || {name:'plan'};
         route = next; dirty = false; writeLocation(true); paintRoute(); window.scrollTo(0,next.scroll||0);
     });
 }
 window.addEventListener('popstate', e => {
+    if(!profile.consent && onboardingDraft) {step=Math.max(0,Math.min(3,e.state?.onboardingStep||0));persistOnboardingDraft();renderOnboarding();window.scrollTo(0,0);return;}
     const next = route.name==='result' ? {name:'plan'} : e.state?.route || {name:'plan'}, stack = route.name==='result' ? [] : e.state?.stack || [];
     if (dirty) { writeLocation(false); confirmLeave(() => {route=next; routeStack=stack; writeLocation(true); paintRoute();}); }
     else {route=next; routeStack=stack; paintRoute(); window.scrollTo(0,next.scroll||0);}
@@ -93,7 +119,7 @@ window.addEventListener('popstate', e => {
 window.addEventListener('beforeunload', e => {if (dirty) {e.preventDefault(); e.returnValue='';}});
 root.addEventListener('input', markDraftDirty);
 root.addEventListener('change', markDraftDirty);
-function markDraftDirty(e) {if(e.target.closest('#event-form,#profile-form,#field-form')) {dirty=true;window.WebApp?.enableClosingConfirmation?.();}}
+function markDraftDirty(e) {if(e.target.closest('#event-form,#profile-form,#field-form')||e.target.matches('#event-text')) {dirty=true;sessionStorage.setItem(formDraftKey(),JSON.stringify(captureFormDraft()));window.WebApp?.enableClosingConfirmation?.();}}
 async function refreshSnapshot() {
     const [nextProfile,nextPlan] = await Promise.all([api('/me/profile'),api('/me/roadmap')]);
     profile=nextProfile; plan=nextPlan;
@@ -125,13 +151,14 @@ function paintRoute() {
         case 'edit': fieldEditorView(); break;
         default: route={name:'plan'};homeView();
     }
+    restoreStoredFormDraft();
 }
 function progressText(p) {return p.total?tr(`${p.completed} из ${p.total} завершено`,`${p.completed} of ${p.total} completed`):tr('Нет текущих действий','No current tasks');}
 function timeline() {
     const current = RoadmapView.currentStage(plan.tasks,effectiveProfile());
     return `<div class="stage-timeline">${RoadmapView.stages.map(id=>{
         const p=RoadmapView.progress(plan.tasks,id);
-        return `<button data-stage="${id}" class="stage-row ${id===current?'current':''} ${p.done?'done':''}"><span class="timeline-dot">${p.done?icon('check',15):''}</span><span class="tile-icon">${icon(stageIcon(id),29)}</span><span class="stage-copy"><strong>${tr(...stageNames[id])}</strong><span>${progressText(p)}</span>${id===current?`<small>${tr('Вы сейчас здесь','You are here')}</small>`:''}</span>${icon('chevron')}</button>`;
+        return `<button data-stage="${id}" class="stage-row ${p.done?'done':id===current?'current':'future'}"><span class="timeline-dot">${p.done?icon('check',15):''}</span><span class="tile-icon">${icon(stageIcon(id),29)}</span><span class="stage-copy"><strong>${tr(...stageNames[id])}</strong><span>${progressText(p)}</span>${p.done?`<small>${tr('Завершено по действиям','All current tasks completed')}</small>`:id===current?`<small>${tr('Вы сейчас здесь','You are here')}</small>`:''}</span>${icon('chevron')}</button>`;
     }).join('')}</div>`;
 }
 function wireStages() { document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>navigate({name:'stage',stage:b.dataset.stage})); }
@@ -141,12 +168,15 @@ function deadlineLines(t) {
 function homeView() {
     const f=effectiveProfile(), hero=RoadmapView.hero(plan.tasks), qs=RoadmapView.clarifications(plan.tasks);
     root.innerHTML=shell(`<button class="context-card" id="context-profile"><span class="tile-icon">${icon('university',30)}</span><span><strong>${esc(universityName())}</strong><small>${esc(visaName(f.visa_regime))} · ${esc(residenceName(f.residence_type))}</small></span>${icon('chevron')}</button>
-        <section class="hero-card">${hero?`<div class="hero-art" aria-hidden="true">${icon(familyIcon(hero),70)}</div><span class="next-label">${tr('Следующий шаг','Next step')}</span><h1>${esc(content(hero.title_i18n))}</h1>${hero.engine_status==='requires_recheck'?`<p class="recheck">${tr('Ранее отмечено вами — проверьте снова','Previously reported — check again')}</p>`:''}${deadlineLines(hero)}<button class="primary wide" data-task="${esc(hero.task_key)}">${tr('Открыть действие','Open task')} <span>→</span></button>`:`<h1>${tr('Пока нет действий','No actions for now')}</h1><p>${tr('Откройте маршрут или уточните данные.','Open your roadmap or complete your information.')}</p><button class="primary wide" id="hero-stages">${tr('Открыть маршрут','Open roadmap')} →</button>`}</section>
-        <div class="section-heading"><h2>${tr('Ваш маршрут','Your roadmap')}</h2><button class="text-link" data-history>${tr('История','History')}</button></div>${timeline()}<button class="text-link all-stages" id="all-stages">${tr('Все этапы','All stages')} →</button>
+        <section class="hero-card">${hero?`<span class="next-label">${icon('plane',16)}${tr('Следующий шаг','Next step')}</span><h1>${esc(content(hero.title_i18n))}</h1>${hero.engine_status==='requires_recheck'?`<p class="recheck">${tr('Ранее отмечено вами — проверьте снова','Previously reported — check again')}</p>`:''}${deadlineLines(hero)}<button class="primary wide" data-task="${esc(hero.task_key)}">${tr('Открыть действие','Open task')}</button>`:`<h1>${tr('Пока нет действий','No actions for now')}</h1><p>${tr('Откройте маршрут или уточните данные.','Open your roadmap or complete your information.')}</p><button class="primary wide" id="${qs.length?'hero-clarify':'hero-stages'}">${qs.length?tr('Уточнить данные','Complete information'):tr('Открыть маршрут','Open roadmap')}</button>`}</section>
+        <div class="section-heading"><h2>${tr('Ваш маршрут','Your roadmap')}</h2><button class="text-link" data-history>${tr('История','History')}</button></div>${timeline()}<button class="text-link all-stages" id="all-stages">${tr('Все этапы','All stages')}</button>
+        ${!f.entry_at&&(f.arrival_status==='arrived'||!f.planned_entry)?`<button class="later-card" id="context-date"><span class="tile-icon">${icon('calendar',23)}</span><span><strong>${f.arrival_status==='arrived'?tr('Когда вы приехали?','When did you arrive?'):tr('Когда планируете приехать?','When will you arrive?')}</strong><small>${tr('Можно уточнить, когда будете готовы','Add this when you are ready')}</small></span>${icon('chevron',16)}</button>`:''}
         ${qs.length?`<section class="clarification-summary"><button class="clarification-heading" id="open-clarifications"><span class="warning-icon">!</span><span><strong>${tr('Нужно уточнить','Needs clarification')}: ${qs.length}</strong><small>${tr('Уточните данные и применимость правил в вашем случае.','Check your information and rule applicability.')}</small></span>${icon('chevron')}</button>${qs.slice(0,3).map(t=>`<button class="clarification-short" data-clarification="${esc(t.task_key)}">${icon(familyIcon(t),24)}<span>${esc(content(t.title_i18n))}</span>${icon('chevron')}</button>`).join('')}</section>`:''}`);
     wireShell();wireStages();wireTasks();
     document.querySelector('#context-profile').onclick=renderProfile;
+    document.querySelector('#context-date')?.addEventListener('click',()=>f.arrival_status==='arrived'?eventForm('entry_recorded'):navigate({name:'edit',field:'planned_entry'}));
     document.querySelector('#all-stages').onclick=()=>navigate({name:'stages'});
+    document.querySelector('#hero-clarify')?.addEventListener('click',()=>f.arrival_status==='arrived'&&!f.entry_at?eventForm('entry_recorded'):navigate({name:'clarifications'}));
     document.querySelector('#hero-stages')?.addEventListener('click',()=>navigate({name:'stages'}));
     document.querySelector('[data-history]').onclick=()=>navigate({name:'history'});
     document.querySelector('#open-clarifications')?.addEventListener('click',()=>navigate({name:'clarifications'}));
@@ -164,12 +194,12 @@ function stageView() {
     const id=RoadmapView.stages.includes(route.stage)?route.stage:'arrival', p=RoadmapView.progress(plan.tasks,id);
     const active=p.tasks.filter(t=>t.user_status!=='completed'||t.engine_status==='requires_recheck'), completed=p.tasks.filter(t=>t.user_status==='completed'&&t.engine_status==='actionable');
     const sources=[...new Map(p.tasks.flatMap(t=>t.source_snapshot).map(s=>[s.official_url,s])).values()];
-    root.innerHTML=shell(`${heading(tr(...stageNames[id]))}<p class="progress-label">${progressText(p)}</p>${p.total?`<progress max="${p.total}" value="${p.completed}">${progressText(p)}</progress>`:''}<div class="task-stack">${active.map(compactTask).join('')}${!p.total?empty(tr('В этом этапе пока нет текущих действий.','No current tasks in this stage.')):''}</div>${completed.length?`<details class="completed-tasks"><summary>${tr('Завершённые','Completed')} · ${completed.length}</summary>${completed.map(compactTask).join('')}</details>`:''}${sources.length?`<section class="surface"><h2>${tr('Полезная информация','Useful information')}</h2>${sources.map(s=>`<a class="source-link" href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${icon('info')}<span>${esc(s.title)}</span>↗</a>`).join('')}</section>`:''}<button class="text-link" id="stage-questions">${tr('Посмотреть уточнения','View clarifications')} →</button>`);
+    root.innerHTML=shell(`${heading(tr(...stageNames[id]))}<p class="progress-label">${progressText(p)}</p>${p.total?`<progress max="${p.total}" value="${p.completed}">${progressText(p)}</progress>`:''}<div class="task-stack">${active.map(compactTask).join('')}${!p.total?empty(tr('В этом этапе пока нет текущих действий.','No current tasks in this stage.')):''}</div>${completed.length?`<details class="completed-tasks"><summary>${tr('Завершённые','Completed')} · ${completed.length}</summary>${completed.map(compactTask).join('')}</details>`:''}${sources.length?`<section class="surface"><h2>${tr('Полезная информация','Useful information')}</h2>${sources.map(s=>`<a class="source-link" href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${icon('info')}<span>${esc(s.title)}</span></a>`).join('')}</section>`:''}<button class="text-link" id="stage-questions">${tr('Посмотреть уточнения','View clarifications')}</button>`);
     wireShell();wireTasks();document.querySelector('#stage-questions').onclick=()=>navigate({name:'clarifications'});
 }
 function clarificationsView() {
     const qs=RoadmapView.clarifications(plan.tasks);
-    root.innerHTML=shell(`${heading(tr('Нужно уточнить','Needs clarification'))}${note(tr('Чтобы показать точные рекомендации, нам нужно уточнить несколько пунктов.','We need to clarify a few points to show relevant recommendations.'))}${['conditional','needs_review'].map(status=>{const ts=qs.filter(t=>t.engine_status===status);return ts.length?`<h2>${status==='conditional'?tr('Можно заполнить сейчас','You can add now'):tr('Нужно проверить','Needs review')}</h2>${ts.map(t=>`<section class="surface clarification-card ${status}"><div class="card-heading"><span class="tile-icon">${icon(familyIcon(t),30)}</span><h3>${esc(content(t.title_i18n))}</h3></div><p>${esc(content(t.eligibility_reason))}</p><p class="sub">${esc((t.missing_fields||[]).map(k=>fieldLabels[k]?tr(...fieldLabels[k]):tr('Проверка применимости','Applicability review')).join(' · '))}</p><button class="${status==='conditional'?'primary':'secondary'} wide" data-resolve="${esc(t.task_key)}">${status==='conditional'?tr('Добавить данные','Add information'):tr('Как проверить','How to check')} →</button></section>`).join('')}`:'';}).join('')}${!qs.length?empty(tr('Пока нет уточнений','No clarifications needed')):''}`);
+    root.innerHTML=shell(`${heading(tr('Нужно уточнить','Needs clarification'))}${note(tr('Чтобы показать точные рекомендации, нам нужно уточнить несколько пунктов.','We need to clarify a few points to show relevant recommendations.'))}${['conditional','needs_review'].map(status=>{const ts=qs.filter(t=>t.engine_status===status);return ts.length?`<h2>${status==='conditional'?tr('Можно заполнить сейчас','You can add now'):tr('Нужно проверить','Needs review')}</h2>${ts.map(t=>`<section class="surface clarification-card ${status}"><div class="card-heading"><span class="tile-icon">${icon(familyIcon(t),30)}</span><h3>${esc(content(t.title_i18n))}</h3></div><p>${esc(content(t.eligibility_reason))}</p><p class="sub">${esc((t.missing_fields||[]).map(k=>fieldLabels[k]?tr(...fieldLabels[k]):tr('Проверка применимости','Applicability review')).join(' · '))}</p><button class="${status==='conditional'?'primary':'secondary'} wide" data-resolve="${esc(t.task_key)}">${status==='conditional'?tr('Добавить данные','Add information'):tr('Как проверить','How to check')}</button></section>`).join('')}`:'';}).join('')}${!qs.length?empty(tr('Пока нет уточнений','No clarifications needed')):''}`);
     wireShell();document.querySelectorAll('[data-resolve]').forEach(b=>b.onclick=()=>{
         const t=plan.tasks.find(t=>t.task_key===b.dataset.resolve);
         const fields=t?.missing_fields||[];
@@ -185,12 +215,12 @@ function clarificationEditorView() {
     const count=fields.length;
     const title=tr('Уточнить данные','Complete information');
     const questions=fields.map((k,i)=>{
-        const options=fieldChoices(k),value=profile[k]===null?'':String(profile[k]??'');
+        const options=fieldChoices(k),value=profile[k]===null?'':String(profile[k]??(k==='arrival_status'?'unknown':''));
         return `<div class="clarification-question"><span class="question-position">${tr('Вопрос','Question')} ${i+1}/${count}</span>${options?selectField(k,tr(...fieldLabels[k]),options,value):field(k,tr(...fieldLabels[k]),k==='citizenship'?'text':'date',value,k==='citizenship'?'maxlength="60"':'')}</div>`;
     }).join('');
-    const editorHTML=`${heading(title)}<p class="sub">${esc(content(task.title_i18n))}</p><p class="privacy">${tr('Заполните известные данные и сохраните их вместе. Маршрут пересчитается; пункт может остаться, если ещё нужны сведения или проверка в офисе.','Add what you know and save it together. The roadmap will be recalculated; this item may remain if more information or an office review is needed.')}</p><form id="field-form"><div class="clarification-fields">${questions}</div><p class="clarification-progress" role="status" aria-live="polite"></p><button class="primary wide" type="submit">${tr('Сохранить данные','Save information')}</button></form>`;
+    const editorHTML=`<div class="sheet-language">${languageControls()}</div>${heading(title)}<p class="sub">${esc(content(task.title_i18n))}</p><p class="privacy">${tr('Заполните известные данные и сохраните их вместе. Маршрут пересчитается; пункт может остаться, если ещё нужны сведения или проверка в офисе.','Add what you know and save it together. The roadmap will be recalculated; this item may remain if more information or an office review is needed.')}</p><form id="field-form"><div class="clarification-fields">${questions}</div><p class="clarification-progress" role="status" aria-live="polite"></p><button class="primary wide" type="submit">${tr('Сохранить данные','Save information')}</button></form>`;
     document.querySelector('#screen').insertAdjacentHTML('beforeend',`<dialog id="field-editor" class="field-sheet clarification-sheet" aria-label="${esc(title)}"><button type="button" class="sheet-close" id="field-close" aria-label="${tr('Закрыть','Close')}">×</button>${editorHTML}</dialog>`);
-    const editor=document.querySelector('#field-editor');editor.showModal();
+    const editor=document.querySelector('#field-editor');editor.showModal();wireLanguageControls();
     const form=document.querySelector('#field-form');
     const updateProgress=()=>{const data=new FormData(form),answered=fields.filter(k=>!['','unknown'].includes(String(data.get(k)||''))).length;form.querySelector('.clarification-progress').textContent=tr(`Заполнено ${answered} из ${count}${count>3?' · прокрутите вопросы':''}`,`${answered} of ${count} answered${count>3?' · scroll for more':''}`);};
     form.addEventListener('input',updateProgress);form.addEventListener('change',updateProgress);updateProgress();
@@ -202,18 +232,18 @@ function clarificationEditorView() {
         for(const k of fields){const v=data.get(k);next[k]=['stay_over_90_days','fingerprinting_completed'].includes(k)?v===''?null:v==='true':v||null;}
         if(fields.includes('visa_regime')&&next.visa_regime==='visa_free')next.visa_expiry=null;
         if(fields.every(k=>next[k]===profile[k]))throw Error(tr('Измените хотя бы одно поле или закройте форму.','Change at least one field or close the form.'));
-        profile=await api('/me/profile','PATCH',next);await refreshSnapshot();lang=profile.language;dirty=false;goBack();toast(tr('Данные сохранены, маршрут пересчитан','Information saved; roadmap updated'));
+        profile=await api('/me/profile','PATCH',next);await refreshSnapshot();lang=profile.language;clearFormDraft();dirty=false;goBack();toast(tr('Данные сохранены, маршрут пересчитан','Information saved; roadmap updated'));
     });
 }
 function reviewView() {
     const t=plan.tasks.find(t=>t.task_key===route.key);
     if (!t) {navigate({name:'clarifications'},true);return;}
-    root.innerHTML=shell(`${heading(content(t.title_i18n))}<section class="review-notice"><h3>${icon('warning',24)}${tr('Нужно проверить','Needs review')}</h3><p>${esc(content(t.eligibility_reason))}</p><p>${tr('Персональный срок не показан, пока применимость не подтверждена.','No personal deadline is shown while applicability remains unverified.')}</p></section><section class="surface"><h2>${tr('Что можно сделать','What you can do')}</h2><p>${esc(content(t.action_i18n))}</p><p>${tr('Уточните применимость требования в указанном офисе.','Ask the office below to confirm whether the requirement applies.')}</p></section><section class="surface"><h2>${tr('Источник и контакт','Source and contact')}</h2><p>${esc(t.contact)}</p>${t.source_snapshot.map(s=>`<a class="source-link" href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ↗</a><small>${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</small>`).join('')}</section><button class="primary wide" id="review-done">${tr('Понятно','Understood')}</button>`);
+    root.innerHTML=shell(`${heading(content(t.title_i18n))}<section class="review-notice"><h3>${icon('warning',24)}${tr('Нужно проверить','Needs review')}</h3><p>${esc(content(t.eligibility_reason))}</p><p>${tr('Персональный срок не показан, пока применимость не подтверждена.','No personal deadline is shown while applicability remains unverified.')}</p></section><section class="surface"><h2>${tr('Что можно сделать','What you can do')}</h2><p>${esc(content(t.action_i18n))}</p><p>${tr('Уточните применимость требования в указанном офисе.','Ask the office below to confirm whether the requirement applies.')}</p></section><section class="surface"><h2>${tr('Источник и контакт','Source and contact')}</h2><p>${esc(t.contact)}</p>${t.source_snapshot.map(s=>`<a class="source-link" href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a><small>${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</small>`).join('')}</section><button class="primary wide" id="review-done">${tr('Понятно','Understood')}</button>`);
     wireShell();document.querySelector('#review-done').onclick=goBack;
 }
 function eventsView() {
     const order=['address_changed','reentry_recorded','visa_issued','registration_confirmed','medical_completed','fingerprinting_completed',...Object.keys(eventNames).filter(k=>!['address_changed','reentry_recorded','visa_issued','registration_confirmed','medical_completed','fingerprinting_completed'].includes(k))];
-    root.innerHTML=shell(`${heading(tr('Сообщить событие','Record an event'))}<p class="sub">${tr('Выберите, что изменилось. Это поможет обновить ваши рекомендации.','Choose what changed to update your recommendations.')}</p><div class="event-options">${order.map(type=>`<button class="event-option" data-event="${type}"><span class="tile-icon">${icon(({address_changed:'address',reentry_recorded:'plane',visa_issued:'passport',registration_confirmed:'plan',medical_completed:'medical',fingerprinting_completed:'fingerprint'})[type]||'calendar',27)}</span><strong>${tr(...eventNames[type])}</strong>${icon('chevron',17)}</button>`).join('')}</div><button class="text-link" id="event-history">${tr('История событий','Event history')} →</button>`);
+    root.innerHTML=shell(`${heading(tr('Сообщить событие','Record an event'))}<p class="sub">${tr('Выберите, что изменилось. Это поможет обновить ваши рекомендации.','Choose what changed to update your recommendations.')}</p><div class="event-options">${order.map(type=>`<button class="event-option" data-event="${type}"><span class="tile-icon">${icon(({address_changed:'address',reentry_recorded:'plane',visa_issued:'passport',registration_confirmed:'plan',medical_completed:'medical',fingerprinting_completed:'fingerprint'})[type]||'calendar',27)}</span><strong>${tr(...eventNames[type])}</strong>${icon('chevron',17)}</button>`).join('')}</div><button class="text-link" id="event-history">${tr('История событий','Event history')}</button>`);
     wireShell();document.querySelectorAll('[data-event]').forEach(b=>b.onclick=()=>eventForm(b.dataset.event));
     document.querySelector('#event-history').onclick=()=>{historyFilter='events';navigate({name:'history'});};
 }
@@ -266,62 +296,61 @@ async function historyView() {
         });
     }catch(e){if(generation===painting)readError(e);}
 }
-const extraFieldNames={university_id:['Вуз','University'],entry_at:['Дата въезда в Россию','Entry date'],planned_entry:['Планируемый въезд','Planned entry'],language:['Язык','Language'],last_medical_completed_at:['Предыдущий медосмотр','Previous medical examination'],stay_expiry:['Окончание пребывания','Permitted stay expiry'],education_start:['Начало занятий','Classes start'],campus_id:['Площадка','Campus'],study_form:['Форма обучения','Study form']};
+const extraFieldNames={arrival_status:['Ситуация','Situation'],university_id:['Вуз','University'],entry_at:['Дата въезда в Россию','Entry date'],planned_entry:['Планируемый въезд','Planned entry'],language:['Язык','Language'],last_medical_completed_at:['Предыдущий медосмотр','Previous medical examination'],stay_expiry:['Окончание пребывания','Permitted stay expiry'],education_start:['Начало занятий','Classes start'],campus_id:['Площадка','Campus'],study_form:['Форма обучения','Study form']};
 Object.assign(fieldLabels,extraFieldNames);
 function fieldChoices(k) {
     const unknown=['unknown',tr('Не указано','Not set')];
-    return ({university_id:[['sutd','СПбГУПТД'],['leti','ЛЭТИ']],language:[['ru','Русский'],['en','English']],visa_regime:[unknown,['visa',tr('По визе','Visa')],['visa_free',tr('Без визы','Visa-free')]],residence_type:[unknown,['dorm',tr('Общежитие','Dormitory')],['private',tr('Частный адрес','Private accommodation')],['other',tr('Другое','Other')]],age_band:[unknown,['adult',tr('18 лет и старше','18 or older')],['minor',tr('До 18 лет','Under 18')]],migration_basis:[unknown,['study',tr('Учёба','Study')],['rvpo','РВПО'],['rvp','РВП'],['residence_permit','ВНЖ']],entry_purpose:[unknown,['study',tr('Учёба','Study')],['other',tr('Другое','Other')]],study_status:[unknown,...[['active','Учусь','Active'],['leave','Академический отпуск','Academic leave'],['transferred','Перевод','Transferred'],['expelled','Отчисление','Expelled'],['graduated','Выпуск','Graduated'],['working','Работа','Working']].map(([v,ru,en])=>[v,tr(ru,en)])],stay_over_90_days:[['',tr('Не знаю','Not sure')],['true',tr('Да','Yes')],['false',tr('Нет','No')]],fingerprinting_completed:[['',tr('Не знаю','Not sure')],['true',tr('Да','Yes')],['false',tr('Нет','No')]],campus_id:[['main',tr('Основная','Main')],['vshte','ВШТЭ'],['other',tr('Другая','Other')]],study_form:[unknown,['full_time',tr('Очная','Full-time')],['part_time',tr('Очно-заочная','Part-time')]]})[k];
+    return ({arrival_status:[unknown,['planned',tr('Готовлюсь к приезду','Preparing to arrive')],['arrived',tr('Уже в России','Already in Russia')]],university_id:[['sutd','СПбГУПТД'],['leti','ЛЭТИ']],language:[['ru','Русский'],['en','English']],visa_regime:[unknown,['visa',tr('По визе','Visa')],['visa_free',tr('Без визы','Visa-free')]],residence_type:[unknown,['dorm',tr('Общежитие','Dormitory')],['private',tr('Частный адрес','Private accommodation')],['other',tr('Другое','Other')]],age_band:[unknown,['adult',tr('18 лет и старше','18 or older')],['minor',tr('До 18 лет','Under 18')]],migration_basis:[unknown,['study',tr('Учёба','Study')],['rvpo','РВПО'],['rvp','РВП'],['residence_permit','ВНЖ']],entry_purpose:[unknown,['study',tr('Учёба','Study')],['other',tr('Другое','Other')]],study_status:[unknown,...[['active','Учусь','Active'],['leave','Академический отпуск','Academic leave'],['transferred','Перевод','Transferred'],['expelled','Отчисление','Expelled'],['graduated','Выпуск','Graduated'],['working','Работа','Working']].map(([v,ru,en])=>[v,tr(ru,en)])],stay_over_90_days:[['',tr('Не знаю','Not sure')],['true',tr('Да','Yes')],['false',tr('Нет','No')]],fingerprinting_completed:[['',tr('Не знаю','Not sure')],['true',tr('Да','Yes')],['false',tr('Нет','No')]],campus_id:[['main',tr('Основная','Main')],['vshte','ВШТЭ'],['other',tr('Другая','Other')]],study_form:[unknown,['full_time',tr('Очная','Full-time')],['part_time',tr('Очно-заочная','Part-time')]]})[k];
 }
-function editableFields(){return ['university_id','language','visa_regime','residence_type','age_band','citizenship','migration_basis','study_status','entry_purpose','stay_over_90_days','fingerprinting_completed','visa_expiry','registration_expiry','planned_entry','entry_at','last_medical_completed_at','stay_expiry','education_start','campus_id','study_form'];}
+function editableFields(){return ['arrival_status','university_id','language','visa_regime','residence_type','age_band','citizenship','migration_basis','study_status','entry_purpose','stay_over_90_days','fingerprinting_completed','visa_expiry','registration_expiry','planned_entry','entry_at','last_medical_completed_at','stay_expiry','education_start','campus_id','study_form'];}
 function profileValue(k,f) {
+    if(k==='arrival_status'&&f.entry_at)return tr('Уже в России','Already in Russia');
     const v=f[k];if(v===null||v===undefined||v===''||v==='unknown')return tr('Не указано','Not set');
     return fieldChoices(k)?.find(([x])=>x===String(v))?.[1] || (/(?:_at|_expiry|_entry|_start)$/.test(k)?formatDate(v):String(v));
 }
 function profileView() {
     const f=effectiveProfile();
-    const groups=[['profile','Данные маршрута','Roadmap information',['university_id','visa_regime','entry_at','planned_entry','residence_type']],['plan','Документы и сроки','Documents and dates',['visa_expiry','registration_expiry','stay_expiry']],['info','Дополнительные уточнения','Additional information',['age_band','citizenship','migration_basis','study_status','entry_purpose','stay_over_90_days','fingerprinting_completed','last_medical_completed_at','education_start','campus_id','study_form','language']]];
+    const groups=[['profile','Данные маршрута','Roadmap information',['arrival_status','university_id','visa_regime','entry_at','planned_entry','residence_type']],['plan','Документы и сроки','Documents and dates',['visa_expiry','registration_expiry','stay_expiry']],['info','Дополнительные уточнения','Additional information',['age_band','citizenship','migration_basis','study_status','entry_purpose','stay_over_90_days','fingerprinting_completed','last_medical_completed_at','education_start','campus_id','study_form','language']]];
     root.innerHTML=shell(`${heading(tr('Мои данные','My information'))}${groups.map(([glyph,ru,en,keys])=>`<section class="profile-group"><h2>${icon(glyph,24)}${tr(ru,en)}</h2>${keys.map(k=>`<button class="profile-row" data-field="${k}"><span>${tr(...fieldLabels[k])}</span><span class="field-value">${esc(profileValue(k,f))}</span>${icon('chevron',16)}</button>`).join('')}</section>`).join('')}${note(tr('Мы храним только данные, необходимые для построения маршрута. Новые документы и изменения обстоятельств записываются как события.','We store only information needed for your roadmap. New documents and changes are recorded as events.'))}<button class="secondary wide" id="notification-toggle">${profile.reminders_enabled?tr('Отключить напоминания','Disable reminders'):tr('Включить напоминания','Enable reminders')}</button><button class="text-link danger" id="delete-data">${tr('Удалить мои данные','Delete my data')}</button>${demoProfilePanel()}`);
     wireShell();document.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>navigate({name:'edit',field:b.dataset.field}));
     document.querySelectorAll('[data-demo-profile]').forEach(b=>b.onclick=guard(()=>switchDemoProfile(b.dataset.demoProfile)));
     document.querySelector('#notification-toggle').onclick=guard(async()=>{profile=await api('/me/profile','PATCH',{...profile,reminders_enabled:!profile.reminders_enabled});paintRoute();});
-    document.querySelector('#delete-data').onclick=()=>{showModal(`<h2>${tr('Удалить профиль?','Delete profile?')}</h2><p>${tr('Все данные сервиса будут удалены. Это нельзя отменить.','All service data will be deleted. This cannot be undone.')}</p><button class="primary danger" id="confirm-delete">${tr('Удалить данные','Delete data')}</button>`);document.querySelector('#confirm-delete').onclick=guard(async()=>{await api('/me/profile','DELETE');forgetDemoSession();sessionStorage.removeItem('student_token');token=null;profile={};plan={tasks:[]};step=0;modal.close();routeStack=[];route={name:'plan'};writeLocation(true);landing();});};
+    document.querySelector('#delete-data').onclick=()=>{showModal(`<h2>${tr('Удалить профиль?','Delete profile?')}</h2><p>${tr('Все данные сервиса будут удалены. Это нельзя отменить.','All service data will be deleted. This cannot be undone.')}</p><button class="primary danger" id="confirm-delete">${tr('Удалить данные','Delete data')}</button>`);document.querySelector('#confirm-delete').onclick=guard(async()=>{await api('/me/profile','DELETE');clearSessionDrafts();forgetDemoSession();sessionStorage.removeItem('student_token');token=null;profile={};plan={tasks:[]};step=0;onboardingDraft=null;modal.close();routeStack=[];route={name:'plan'};writeLocation(true);await landing();});};
 }
 function fieldEditorView() {
     const k=route.field;if(!editableFields().includes(k)){navigate({name:'profile'},true);return;}
     const eventType={visa_expiry:'visa_issued',registration_expiry:'registration_confirmed',fingerprinting_completed:'fingerprinting_completed',last_medical_completed_at:'medical_completed',entry_at:effectiveProfile().entry_at?'reentry_recorded':'entry_recorded',residence_type:'address_changed'}[k];
-    const options=fieldChoices(k),value=profile[k]===null?'':String(profile[k]??'');
-    const editorHTML = `${heading(tr(...fieldLabels[k]))}${eventType?`<p class="sub">${tr('Новый факт нужно сохранить как событие. Начальные сведения можно уточнить отдельно.','Record a new fact as an event. Initial information can be corrected separately.')}</p><button class="primary wide" id="field-event">${tr(...eventNames[eventType])} →</button><details><summary>${tr('Уточнить исходные сведения','Correct initial information')}</summary>`:''}<form id="field-form">${options?selectField(k,tr(...fieldLabels[k]),options,value):field(k,tr(...fieldLabels[k]),k==='citizenship'?'text':'date',value,k==='citizenship'?'maxlength="60"':'')}<p class="privacy">${tr('Изменения уже записанных событий исправляйте в истории.','Correct previously recorded events in History.')}</p><button class="primary wide" type="submit">${tr('Сохранить','Save')}</button></form>${eventType?'</details>':''}`;
+    const options=fieldChoices(k),value=profile[k]===null?'':String(profile[k]??(k==='arrival_status'?'unknown':''));
+    const editorHTML = `<div class="sheet-language">${languageControls()}</div>${heading(tr(...fieldLabels[k]))}${eventType?`<p class="sub">${tr('Новый факт нужно сохранить как событие. Начальные сведения можно уточнить отдельно.','Record a new fact as an event. Initial information can be corrected separately.')}</p><button class="primary wide" id="field-event">${tr(...eventNames[eventType])}</button><details><summary>${tr('Уточнить исходные сведения','Correct initial information')}</summary>`:''}<form id="field-form">${options?selectField(k,tr(...fieldLabels[k]),options,value):field(k,tr(...fieldLabels[k]),k==='citizenship'?'text':'date',value,k==='citizenship'?'maxlength="60"':'')}<p class="privacy">${tr('Изменения уже записанных событий исправляйте в истории.','Correct previously recorded events in History.')}</p><button class="primary wide" type="submit">${tr('Сохранить','Save')}</button></form>${eventType?'</details>':''}`;
     profileView();
     document.querySelector('#screen').insertAdjacentHTML('beforeend', `<dialog id="field-editor" class="field-sheet" aria-label="${esc(tr(...fieldLabels[k]))}"><button type="button" class="sheet-close" id="field-close" aria-label="${tr('Закрыть','Close')}">×</button>${editorHTML}</dialog>`);
-    const editor=document.querySelector('#field-editor');editor.showModal();
+    const editor=document.querySelector('#field-editor');editor.showModal();wireLanguageControls();
     editor.addEventListener('cancel',e=>{e.preventDefault();goBack();});
     document.querySelector('#field-close').onclick=goBack;
     document.querySelector('#field-event')?.addEventListener('click',()=>eventForm(eventType));
     document.querySelector('#field-form').onsubmit=guard(async e=>{
         e.preventDefault();const v=new FormData(e.currentTarget).get(k), next={...profile,[k]:['stay_over_90_days','fingerprinting_completed'].includes(k)?v===''?null:v==='true':v||null};
         if(k==='visa_regime'&&v==='visa_free')next.visa_expiry=null;
-        profile=await api('/me/profile','PATCH',next);await refreshSnapshot();lang=profile.language;dirty=false;goBack();toast(tr('Данные сохранены','Information saved'));
+        profile=await api('/me/profile','PATCH',next);await refreshSnapshot();lang=profile.language;clearFormDraft();dirty=false;goBack();toast(tr('Данные сохранены','Information saved'));
     });
 }
-function saveOnboardDraft() {
-    const f=document.querySelector('#onboard-form');if(!f)return;
-    const d=Object.fromEntries(new FormData(f));for(const k of ['entry_at','planned_entry','visa_expiry','residence_type'])if(k in d)profile[k]=d[k]||null;
-}
-function landing() {
-    root.innerHTML=shell(`<section class="welcome"><div class="welcome-logo">↗</div><h1>${tr('Рядом','Ryadom')}</h1><p>${tr('Пошаговая поддержка<br>для международных<br>студентов в России','Step-by-step support<br>for international<br>students in Russia')}</p><div class="welcome-world" aria-hidden="true"><span class="world-orbit"></span>${icon('university',90)}<span class="world-pin">${icon('address',30)}</span></div>${token||config.demo_mode?`<button class="primary wide" id="welcome-start">${tr('Начать','Get started')} →</button>`:`<a class="primary wide" href="https://max.ru/${esc(config.max_bot_username||'t647_hakaton_max_bot')}">${tr('Открыть в MAX','Open in MAX')} →</a>`}${!token&&config.demo_mode?`<small>${tr('В браузере — отдельный тестовый профиль. В MAX план связан с вашим аккаунтом.','Browser mode uses a separate test profile. In MAX, your plan is linked to your account.')}</small>`:''}</section>`);
-    wireShell();document.querySelector('#welcome-start')?.addEventListener('click',guard(async()=>{
-        if(!token){const auth=await api('/auth/demo','POST');token=auth.access_token;sessionStorage.setItem('student_token',token);sessionStorage.removeItem(demoStorageKey);profile=await api('/me/profile');plan=await api('/me/roadmap');}
-        step=0;renderOnboarding();
-    }));
+async function landing() {
+    if(!token && config.demo_mode) {
+        const auth=await api('/auth/demo','POST');token=auth.access_token;sessionStorage.setItem('student_token',token);
+        sessionStorage.removeItem(demoStorageKey);profile=await api('/me/profile');plan=await api('/me/roadmap');
+    }
+    if(token) { renderOnboarding();return; }
+    root.innerHTML=shell(`${heading(tr('Ваш план — в MAX','Your roadmap in MAX'))}<p class="sub">${tr('Откройте приложение из бота, чтобы сохранить план в своём аккаунте.','Open the app from the bot to save your roadmap to your account.')}</p><a class="primary wide" href="https://max.ru/${esc(config.max_bot_username||'t647_hakaton_max_bot')}">${tr('Открыть в MAX','Open in MAX')}</a>`);wireShell();
 }
 start().then(()=>{
     if(!profile.consent)return;
     const params=requestedScreen, name=params.get('screen');
-    if(name && ['plan','stages','stage','task','clarifications','review','events','result','history','profile'].includes(name)) {
-        route={name};for(const key of ['stage','key','revision','eventId','reason'])if(params.has(key))route[key]=params.get(key);
-        routeStack=[{name:'plan'}];writeLocation(true);paintRoute();
+    if(name && ['plan','stages','stage','task','clarifications','review','events','event','result','history','profile','edit','clarify'].includes(name)) {
+        const saved=requestedNavigation?.ryadom&&requestedNavigation.route?.name===name?requestedNavigation:null;
+        route=saved?.route||{name};for(const key of ['stage','key','revision','eventId','reason'])if(params.has(key))route[key]=params.get(key);
+        routeStack=saved?.stack||[{name:'plan'}];writeLocation(true);paintRoute();
     }
 }).catch(e=>{
-    root.innerHTML=`<div class="onboard"><h2>Не удалось открыть приложение / Could not open the app</h2><p>${esc(e.message)}</p><button class="primary" id="retry">Повторить / Retry</button></div>`;
+    root.innerHTML=shell(`${heading(tr('Не удалось открыть приложение','Could not open the app'))}<p>${esc(e.message)}</p><button class="primary wide" id="retry">${tr('Повторить','Retry')}</button>`);wireShell();
     document.querySelector('#retry').onclick=()=>location.reload();
 });

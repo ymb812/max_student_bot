@@ -12,6 +12,10 @@ class Profile(StrictModel):
     university_id: Literal["sutd", "leti"] | None = None
     campus_id: Literal["main", "vshte", "other"] = "main"
     language: Literal["ru", "en"] = "ru"
+    arrival_status: Literal["planned", "arrived", "unknown"] = Field(
+        default="unknown",
+        description="Presentation context only; does not record entry or change rule applicability.",
+    )
     age_band: Literal["adult", "minor", "unknown"] = "unknown"
     citizenship: str | None = Field(default=None, min_length=2, max_length=60)
     visa_regime: Literal["visa", "visa_free", "unknown"] = "unknown"

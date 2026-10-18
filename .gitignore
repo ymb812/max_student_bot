@@ -16,3 +16,6 @@ output/
 *.sqlite3-*
 *.db
 *.log
+
+# Original UI prototype is archived outside this project.
+/activation-v3/

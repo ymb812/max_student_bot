@@ -15,7 +15,8 @@ let token = sessionStorage.getItem('student_token'),
     },
     config = {},
     lang = 'ru',
-    step = -1;
+    step = 0;
+let onboardingDraft = null;
 const tr = (ru, en) => lang === 'en' ? en : ru;
 const content = x => x?.[lang] ?? x?.ru ?? '';
 const today = () => new Date().toLocaleDateString('en-CA', {
@@ -95,7 +96,7 @@ function guard(fn) {
         try {
             await fn(e)
         } catch (err) {
-            const message = err.name === 'TimeoutError' || err instanceof TypeError ? tr('Не удалось получить ответ. Проверьте историю и повторите действие.', 'No response received. Check the history and retry the action.') : err.message;
+            const message = err.name === 'TimeoutError' || err instanceof TypeError ? tr('Не удалось получить ответ. Проверьте соединение и повторите попытку.', 'No response received. Check your connection and try again.') : err.message;
             const form = b?.closest('form') || root.querySelector('#event-form,#field-form,#onboard-form');
             if (form) {
                 let error = form.querySelector('.form-error');
@@ -119,15 +120,20 @@ const iconPaths = {
 };
 const icon = (name, size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name] || ''}</svg>`;
 
-async function switchLanguage() {
-    const nextLanguage = lang === 'ru' ? 'en' : 'ru';
+async function switchLanguage(nextLanguage = lang === 'ru' ? 'en' : 'ru') {
+    if (nextLanguage === lang) return;
+    if (!token) {lang = nextLanguage; await landing(); return;}
+    const draft = captureFormDraft(), wasDirty = dirty, position = scrollY;
     if (profile.consent) {
-        profile = await api('/me/profile', 'PATCH', {...profile,language:nextLanguage});
+        profile = await api('/me/profile', 'PATCH', {...profile, language: nextLanguage});
         await refreshSnapshot();
     }
-    else saveOnboardDraft();
-    lang=nextLanguage;
-    profile.consent ? paintRoute() : renderOnboarding()
+    lang = nextLanguage;
+    if (!profile.consent) { ensureOnboardingDraft(); onboardingDraft.language = lang; persistOnboardingDraft(); }
+    profile.consent ? paintRoute() : renderOnboarding();
+    restoreFormDraft(draft); dirty = wasDirty;
+    if (dirty) window.WebApp?.enableClosingConfirmation?.();
+    window.scrollTo(0, position);
 }
 
 async function load() {
@@ -155,69 +161,62 @@ function residenceOptions(selected) {
     ].map(([v, l]) => option(v, l, selected)).join('')
 }
 
+function onboardingStorageKey() { return 'ryadom_onboarding_' + token; }
+function ensureOnboardingDraft() {
+    if (onboardingDraft) return;
+    try { onboardingDraft = JSON.parse(sessionStorage.getItem(onboardingStorageKey())); } catch { /* Ignore an invalid local draft. */ }
+    if (!onboardingDraft) onboardingDraft = {
+        arrival_status: profile.arrival_status !== 'unknown' ? profile.arrival_status : null,
+        university_id: profile.university_id || null, visa_regime: null, residence_type: null,
+        language: lang, consent: false, step: 0
+    };
+    step = Math.max(0, Math.min(3, onboardingDraft.step || 0));
+    lang = onboardingDraft.language || lang;
+}
+function persistOnboardingDraft() {
+    onboardingDraft.step = step;
+    sessionStorage.setItem(onboardingStorageKey(), JSON.stringify(onboardingDraft));
+}
 function renderOnboarding() {
-    if (step < 0) { landing(); return; }
-    window.scrollTo(0, 0);
-    let html = '';
-    const steps = [tr('Выберите язык', 'Choose your language'), tr('Выберите ваш вуз', 'Choose your university'), tr('Как вы въезжаете в Россию?', 'How are you entering Russia?'), tr('Данные для первого маршрута', 'Your first roadmap')];
-    if (step === 0) html = `<div class="choices"><button class="choice ${lang==='ru'?'selected':''}" data-lang="ru">Русский<small>План и уведомления на русском</small></button><button class="choice ${lang==='en'?'selected':''}" data-lang="en">English<small>Your roadmap and notifications in English</small></button></div>`;
-    if (step === 1) html = `<div class="choices"><button class="choice ${profile.university_id==='sutd'?'selected':''}" data-university="sutd">СПбГУПТД<small>${tr('Санкт-Петербургский государственный университет промышленных технологий и дизайна','Saint Petersburg State University of Industrial Technologies and Design')}</small></button><button class="choice ${profile.university_id==='leti'?'selected':''}" data-university="leti">ЛЭТИ<small>${tr('Санкт-Петербургский государственный электротехнический университет «ЛЭТИ»','Saint Petersburg Electrotechnical University LETI')}</small></button></div>`;
-    if (step === 2) html = `<p class="sub">${tr('Этот ответ помогает выбрать локальный порядок. Гражданство и договорные исключения проверяются отдельно.','This selects a local route. Citizenship and treaty exemptions are checked separately.')}</p><div class="choices">${[['visa',tr('Учебная виза','Study visa')],['visa_free',tr('Безвизовый въезд','Visa-free entry')],['unknown',tr('Другое / не знаю','Other / not sure')]].map(([v,l])=>`<button class="choice ${profile.visa_regime===v?'selected':''}" data-regime="${v}">${l}</button>`).join('')}</div>`;
-    if (step === 3) html = `<div class="segmented"><button type="button" data-arrival="arrived" class="${arrivalMode==='arrived'?'active':''}">${tr('Уже въехал', 'Already arrived')}</button><button type="button" data-arrival="planned" class="${arrivalMode==='planned'?'active':''}">${tr('Планирую въезд', 'Planning arrival')}</button></div><form id="onboard-form"><div class="fields">${field('entry_at',tr('Фактическая дата въезда, если уже приехали','Actual entry date, if already arrived'),'date',profile.entry_at||'',`max="${today()}"`)}${field('planned_entry',tr('Планируемая дата, если ещё не приехали','Planned entry date, if not yet arrived'),'date',profile.planned_entry||'')}<label class="field">${tr('Где вы живёте?','Where do you live?')}<select name="residence_type">${residenceOptions(profile.residence_type)}</select></label>${profile.visa_regime==='visa'?field('visa_expiry',tr('Окончание визы, если известно','Visa expiry, if known'),'date',profile.visa_expiry||''):''}</div><p class="sub">${tr('Неизвестные поля можно оставить пустыми. Уточните их позднее в разделе «Мои данные».','You can leave unknown fields blank and add them later in My information.')}</p><label class="checkbox"><input type="checkbox" name="consent" required><span>${tr('Согласен на хранение в этом сервисе вуза, дат и статусов процедур для построения плана. Без сканов, номеров паспортов, точного адреса и медицинских результатов. Удалить данные можно в профиле. Срок хранения после последней активности:','I agree to storage of my university, dates and procedure statuses for this roadmap. No scans, passport numbers, exact addresses or medical results. Delete data from your profile. Retention after last activity:')} ${config.privacy_retention_days} ${tr('дней.','days.')}</span></label></form>`;
-    root.innerHTML = shell(`<div class="onboard"><div class="eyebrow">${tr('Знакомство','Getting started')} · ${step+1}/4</div><div class="steps">${[0,1,2,3].map(i=>`<span class="${i<=step?'active':''}"></span>`).join('')}</div><div class="onboard-art" aria-hidden="true">${step===0?'<span class="language-bubble">A</span><span class="language-bubble second">Я</span>':icon(['info','university','passport','calendar'][step],48)}</div><h1>${steps[step]}</h1>${html}<div class="actions">${step>=0?`<button class="secondary" id="back">${tr('Назад','Back')}</button>`:''}<button class="primary" id="next">${step===3?tr('Построить мой план →','Build my roadmap →'):tr('Продолжить →','Continue →')}</button></div></div>`);
+    ensureOnboardingDraft();
+    const arrived = onboardingDraft.arrival_status === 'arrived';
+    const questions = [
+        {key:'arrival_status', icon:'plane', title:tr('Вы уже приехали в Россию?', 'Have you arrived in Russia?'), hint:tr('Начнём с того, что важно для вас сейчас.', 'Let’s start with what matters to you now.'), options:[
+            ['planned','plane',tr('Готовлюсь к приезду','Preparing to arrive'),tr('Хочу понять, что сделать до поездки','Find out what to do before the trip')],
+            ['arrived','address',tr('Я уже в России','I am already in Russia'),tr('Нужны следующие шаги после въезда','Find your next steps after arrival')]]},
+        {key:'university_id', icon:'university', title:tr('В каком вузе вы учитесь?', 'Which university is yours?'), hint:tr('У каждого вуза свой порядок и контакты.', 'Each university has its own process and contacts.'), options:[
+            ['leti','university',tr('ЛЭТИ','LETI'),tr('Электротехнический университет','Electrotechnical University')],
+            ['sutd','university','СПбГУПТД',tr('Промышленные технологии и дизайн','Industrial Technologies and Design')]]},
+        {key:'visa_regime', icon:'passport', title:arrived?tr('Как вы въехали в Россию?','How did you enter Russia?'):tr('Как вы планируете въехать?','How will you enter Russia?'), hint:tr('Если не уверены, выберите «Другое или не знаю».','If you are unsure, choose “Other or not sure”.'), options:[
+            ['visa','passport',tr('Учебная виза','Study visa'),''], ['visa_free','plane',tr('Без визы','Visa-free'),''], ['unknown','info',tr('Другое или не знаю','Other or not sure'),'']]},
+        {key:'residence_type', icon:'address', title:arrived?tr('Где вы сейчас живёте?','Where are you living?'):tr('Где планируете жить?','Where will you live?'), hint:tr('Точный адрес указывать не нужно.','You do not need to enter an exact address.'), options:[
+            ['dorm','university',tr('В общежитии','In a dormitory'),''], ['private','address',tr('В частном жилье','In private accommodation'),''], ['unknown','info',tr('Пока неизвестно','Not sure yet'),'']]}
+    ];
+    const q = questions[step];
+    history.replaceState({ryadom:true,onboardingStep:step},'',location.href);
+    root.innerHTML = shell(`<section class="onboard"><div class="quiz-meta"><span>${tr('Ваш первый план','Your first roadmap')}</span><span>${tr('Вопрос','Question')} ${step+1} ${tr('из','of')} 4</span></div><div class="steps" aria-hidden="true">${[0,1,2,3].map(i=>`<span class="${i<=step?'active':''}"></span>`).join('')}</div><div class="question-icon" aria-hidden="true">${icon(q.icon,27)}</div><h1>${q.title}</h1><p class="quiz-lede">${q.hint}</p><form id="onboard-form"><fieldset class="quiz-options"><legend class="sr-only">${q.title}</legend>${q.options.map(([v,glyph,label,description])=>`<label class="quiz-option"><input type="radio" name="${q.key}" value="${v}" ${onboardingDraft[q.key]===v?'checked':''} required><span class="tile-icon">${icon(glyph,21)}</span><span class="option-copy"><strong>${label}</strong>${description?`<small>${description}</small>`:''}</span><span class="choice-dot" aria-hidden="true"></span></label>`).join('')}</fieldset>${step===3?`<label class="checkbox quiz-consent"><input type="checkbox" name="consent" required ${onboardingDraft.consent?'checked':''}><span>${tr('Согласен на хранение в этом сервисе вуза, дат и статусов процедур для построения плана. Без сканов, номеров паспортов, точного адреса и медицинских результатов. Удалить данные можно в профиле. Срок хранения после последней активности:','I agree to storage of my university, dates and procedure statuses for this roadmap. No scans, passport numbers, exact addresses or medical results. Delete data from your profile. Retention after last activity:')} ${config.privacy_retention_days} ${tr('дней.','days.')}</span></label>`:`<p class="quiz-hint">${icon('info',17)}${tr('Покажем действия для вашей ситуации.','We’ll show actions for your circumstances.')}</p>`}<div class="quiz-footer"><button class="primary wide" id="next" type="submit" ${!onboardingDraft[q.key]||(step===3&&!onboardingDraft.consent)?'disabled':''}>${step===3?tr('Открыть мой план','Open my roadmap'):tr('Продолжить','Continue')}</button><p>${tr('Ответ можно изменить, вернувшись назад.','Go back whenever you need to change an answer.')}</p></div></form></section>`);
     wireShell();
-    if (step === 3) {
-        const f = document.querySelector('#onboard-form');
-        f.elements.entry_at.closest('label').hidden = arrivalMode !== 'arrived';
-        f.elements.planned_entry.closest('label').hidden = arrivalMode !== 'planned';
-        document.querySelectorAll('[data-arrival]').forEach(b => b.onclick = () => { saveOnboardDraft(); arrivalMode = b.dataset.arrival; renderOnboarding(); });
-    }
-    document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => {
-        lang = b.dataset.lang;
-        profile.language = lang;
-        renderOnboarding()
-    });
-    document.querySelectorAll('[data-university]').forEach(b => b.onclick = () => {
-        profile.university_id = b.dataset.university;
-        renderOnboarding()
-    });
-    document.querySelectorAll('[data-regime]').forEach(b => b.onclick = () => {
-        profile.visa_regime = b.dataset.regime;
-        renderOnboarding()
-    });
-    document.querySelector('#back')?.addEventListener('click', () => {
-        saveOnboardDraft();
-        step--;
-        renderOnboarding()
-    });
-    document.querySelector('#next').addEventListener('click', guard(async () => {
-        if (step === 1 && !profile.university_id) throw Error(tr('Выберите вуз', 'Choose a university'));
-        if (step < 3) {
-            step++;
-            renderOnboarding();
-            return
-        }
-        const form = document.querySelector('#onboard-form');
+    const form = document.querySelector('#onboard-form');
+    form.onchange = () => {
+        onboardingDraft[q.key] = new FormData(form).get(q.key);
+        if (step===3) onboardingDraft.consent = form.elements.consent.checked;
+        persistOnboardingDraft();
+        document.querySelector('#next').disabled = !onboardingDraft[q.key] || (step===3&&!onboardingDraft.consent);
+    };
+    form.onsubmit = guard(async e => {
+        e.preventDefault();
         if (!form.reportValidity()) return;
-        const data = Object.fromEntries(new FormData(form));
-        profile = {
-            ...profile,
-            language: lang,
-            consent: true,
-            entry_at: arrivalMode === 'arrived' ? data.entry_at || null : null,
-            planned_entry: arrivalMode === 'planned' ? data.planned_entry || null : null,
-            residence_type: data.residence_type,
-            visa_expiry: profile.visa_regime === 'visa' ? data.visa_expiry || null : null
-        };
-        const enteredAt = profile.entry_at;
-        profile = await api('/me/profile', 'PATCH', {...profile, entry_at: null});
-        if (enteredAt && profile.residence_type !== 'unknown') {
-            await api('/me/events', 'POST', {type:'entry_recorded', occurred_at:enteredAt,
-                payload:{residence_type:profile.residence_type,visa_regime:profile.visa_regime,entry_purpose:profile.entry_purpose},
-                confirmed:true,idempotency_key:onboardingEventKey});
-        } else if (enteredAt) profile = await api('/me/profile', 'PATCH', {...profile,entry_at:enteredAt});
-        await load()
-    }))
+        if (step<3) {step++;persistOnboardingDraft();history.pushState({ryadom:true,onboardingStep:step},'',location.href);renderOnboarding();window.scrollTo(0,0);return;}
+        const missing = questions.findIndex(question=>!onboardingDraft[question.key]);
+        if (missing>=0) {step=missing;persistOnboardingDraft();renderOnboarding();return;}
+        const next = {...profile, arrival_status:onboardingDraft.arrival_status, university_id:onboardingDraft.university_id,
+            visa_regime:onboardingDraft.visa_regime, residence_type:onboardingDraft.residence_type, language:lang, consent:true};
+        // Nullable dates stay unknown. A situation answer never records an entry event.
+        const saved = await api('/me/profile', 'PATCH', next);
+        profile = saved;
+        sessionStorage.removeItem(onboardingStorageKey());onboardingDraft=null;
+        await load();
+    });
 }
 
 function taskTiming(t) {
@@ -322,11 +321,15 @@ function taskDetailView(key) {
         <h3 class="detail-label">${tr('Куда обратиться', 'Where to go')}</h3><p class="detail-text">${esc(t.contact)}</p></section>
         <details class="disclosure" ${t.missing_fields.length ? 'open' : ''}><summary>${tr('Почему это в моём плане', 'Why this is in my plan')}</summary><p class="detail-text">${esc(content(t.eligibility_reason))}</p>
         ${t.missing_fields.length ? `<p class="privacy">${tr('Что нужно уточнить', 'What needs clarification')}: ${esc(t.missing_fields.map(fieldName).join(', '))}</p><button class="secondary" id="detail-profile">${tr('Уточнить мои данные', 'Complete my information')}</button>` : ''}</details>
-        <details class="disclosure"><summary>${tr('Источники и проверка', 'Sources and verification')}</summary>${t.source_snapshot.map(s=>`<div class="source"><a href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ↗</a><br>${esc(sourceLabel(s.source_type))} · ${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</div>`).join('')}
+        <details class="disclosure"><summary>${tr('Источники и проверка', 'Sources and verification')}</summary>${t.source_snapshot.map(s=>`<div class="source"><a href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a><br>${esc(sourceLabel(s.source_type))} · ${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</div>`).join('')}
         <p class="privacy">${tr('Подтверждение нормы', 'Norm verification')}: ${esc(confidenceLabel(t.norm_confidence))}<br>${tr('Применимость к вам', 'Applicability to you')}: ${esc(confidenceLabel(t.eligibility_confidence))}<br>${tr('Формула срока', 'Timing formula')}: ${esc(confidenceLabel(t.formula_confidence))}</p></details>
         ${!statusLocked && t.user_status !== 'completed' ? `<button class="primary wide" data-status="completed">${t.family === 'M07' ? tr('Отметить, что передал(а) документы', 'Mark documents as submitted') : tr('Отметить как выполненное', 'Mark as completed')}</button>` : ''}
+        ${t.completion_basis === 'reported_fact' || t.engine_status === 'superseded' ? `<button class="secondary wide" id="detail-history">${tr('Открыть историю','Open history')}</button>` : ''}
+        ${!statusLocked && t.user_status === 'completed' && RoadmapView.hero(plan.tasks) ? `<button class="primary wide" id="detail-next">${tr('Следующее действие','Next action')}</button>` : ''}
         ${t.engine_status === 'requires_recheck' ? `<button class="primary wide" id="detail-confirm-event">${tr('Сообщить новое подтверждение', 'Record new confirmation')}</button>` : ''}
         <p class="privacy">${tr('«Выполнено» — ваша отметка о действии. Получение нового документа сообщите отдельным событием.', '“Completed” is your report of an action. Record a newly issued document as a separate event.')}</p>`);
+    document.querySelector('#detail-history')?.addEventListener('click',()=>navigate({name:'history'}));
+    document.querySelector('#detail-next')?.addEventListener('click',()=>taskDetail(RoadmapView.hero(plan.tasks).task_key));
     document.querySelector('#detail-confirm-event')?.addEventListener('click', () => eventForm(t.family==='M04'||t.family==='M08'?'registration_confirmed':t.family==='M07'?'visa_issued':'address_changed'));
     document.querySelector('#detail-profile')?.addEventListener('click', () => { modal.close(); renderProfile(); });
     document.querySelectorAll('[data-status]').forEach(b => b.onclick = guard(async () => {
@@ -373,7 +376,10 @@ function eventFormView(type, original = null, candidateId = null) {
             ['visa_free', tr('Безвизовый', 'Visa-free')]
         ], payload.visa_regime || effective.visa_regime)
     }
-    if (['entry_recorded', 'reentry_recorded', 'address_changed', 'registration_confirmed'].includes(type)) fields += `<label class="field">${tr('Тип жилья','Residence')}<select name="residence_type">${residenceOptions(payload.residence_type||effective.residence_type).replace(/<option value="unknown"[^>]*>.*?<\/option>/,'')}</select></label>`;
+    if (['entry_recorded', 'reentry_recorded', 'address_changed', 'registration_confirmed'].includes(type)) {
+        const residence = payload.residence_type || effective.residence_type;
+        fields += `<label class="field">${tr('Тип жилья','Residence')}<select name="residence_type" required>${!residence || residence==='unknown'?`<option value="" selected disabled>${tr('Выберите тип жилья','Choose residence type')}</option>`:''}${residenceOptions(residence).replace(/<option value="unknown"[^>]*>.*?<\/option>/,'')}</select></label>`;
+    }
     if (type === 'visa_issued') fields += field('visa_expiry', tr('Окончание новой визы', 'New visa expiry'), 'date', payload.visa_expiry || '', 'required');
     if (type === 'registration_confirmed') fields += field('registration_expiry', tr('Окончание новой регистрации', 'New registration expiry'), 'date', payload.registration_expiry || '', 'required');
     if (type === 'status_changed') fields += selectField('status', tr('Новое основание', 'New grounds'), [
@@ -393,7 +399,8 @@ function eventFormView(type, original = null, candidateId = null) {
     ], payload.status || 'active');
     showDetail(`<h2>${tr(original?'Исправить событие':'Что изменилось?',original?'Correct an event':'What changed?')}</h2>${candidateId?`<div class="banner">${tr('Предложенная интерпретация. Проверьте тип, выберите точную дату и заполните поля. План изменится только после подтверждения.','Proposed interpretation. Verify the type, choose the exact date and fill in the fields. The roadmap changes only after confirmation.')}</div>`:''}<form id="event-form">${selectField('type',tr('Событие','Event'),Object.entries(eventNames).map(([v,s])=>[v,tr(...s)]),type)}<div class="fields">${field('occurred_at',tr('Когда это произошло?','When did it happen?'),'date',original?.occurred_at||'',`required max="${today()}"`)}${fields}</div>${type === "address_changed" ? `<label class="checkbox"><input type="checkbox" data-same-place>${tr("Переезд в другое место того же типа (если тип жилья не изменился)", "I moved to another place of the same type (if residence type is unchanged)")}</label>` : ""}<p class="privacy">${tr('Событие — ваш собственный отчёт. Не вводите номера документов, адрес или результаты медицинских исследований.','This is your own report. Do not enter document numbers, exact addresses or medical results.')}</p><label class="checkbox"><input type="checkbox" required>${tr('Подтверждаю указанное событие, дату и данные','I confirm the event, date and details')}</label><div class="actions"><button class="primary" type="submit">${tr('Подтвердить и обновить план','Confirm and update roadmap')}</button></div></form>${!original?`<div class="detail-label">${tr('Можно описать событие словами','You can describe the event in words')}</div><textarea id="event-text" maxlength="1500" placeholder="${tr('Например: я переехал. Без личных данных.','For example: I moved. No personal information.')}"></textarea><button class="secondary" id="parse-event">${tr('Предложить форму','Suggest a form')}</button>`:''}`);
     root.querySelector('[name=type]').disabled = true;
-    const key = crypto.randomUUID();
+    const key = route.submissionKey ||= crypto.randomUUID();
+    writeLocation(true);
     document.querySelector('#event-form').onsubmit = guard(async e => {
         e.preventDefault();
         if (!e.currentTarget.reportValidity()) return;
@@ -430,7 +437,7 @@ function eventFormView(type, original = null, candidateId = null) {
             const revision = revisions.revisions.find(r => r.trigger_id === recorded.id);
             saved = {event_id: recorded.id, revision_id: revision?.id};
         }
-        dirty = false;
+        clearFormDraft(); dirty = false;
         await refreshSnapshot();
         navigate({name: 'result', eventId: saved.event_id, revision: saved.revision_id, reason: original ? 'event_corrected' : type}, true);
         toast(tr('Событие сохранено. План обновлён.', 'Event saved. Roadmap updated.'))
@@ -477,8 +484,9 @@ async function start() {
             }
             return
         } catch (e) {
+            if(token)throw e;
             toast(e.message)
         }
     }
-    landing()
+    await landing()
 }

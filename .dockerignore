@@ -9,3 +9,6 @@ tests
 __pycache__
 *.pyc
 .pytest_cache
+
+# Original UI prototype is archived outside this project.
+/activation-v3/

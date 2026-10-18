@@ -1,6 +1,10 @@
 # Карта кода «Рядом»
 
-Обновлено 30.09.2026. Продуктовый source of truth — MASTER FINAL в этой директории.
+Обновлено 18.10.2026. Продуктовый source of truth — MASTER FINAL в этой директории.
+
+Мобильный интерфейс от 18.10.2026, требования, соответствие исходному прототипу, проверки и снимки: `ACTIVATION_V3_IMPLEMENTATION_2026_10_18.md`. Визуальное оформление и короткий onboarding обновлены; полный каталог и правила сохранены. Декоративные текстовые стрелки убраны из student/admin UI, навигационные SVG-иконки сохранены.
+
+Исходный прототип сохранён пользователем вне проекта; локальная копия исключена из Git и Docker-контекста и для разработки не требуется. Для работы достаточно этой карты, `RYADOM_FINAL_UI_UX_LOGIC_SPEC.md` и отчёта реализации выше. Рабочие исходники и логотип находятся в `app/static/`; `output/activation-v3/` — только генерируемые снимки проверок.
 
 Предсдаточная проверка кода, выкладки, Git и комплекта: `HACKATHON_FINAL_AUDIT_2026_09_30.md`.
 
@@ -11,7 +15,7 @@
 | `docker-compose.yml`, `deploy/Caddyfile.max` | Опциональная изолированная сеть app/proxy и отдельный host block max.market-kit.ru, без новых публичных портов. |
 | `tests/test_demo_profiles.py` | Фактические fixtures: локальные рекомендации, безопасные unknown и независимость статусов. |
 | `app/timeutil.py` | Московская календарная дата для движка, валидации и reminders. |
-| `app/models.py` | Строгие входные схемы профиля, событий, кандидатов и локальных правил. Запрет лишних полей/медицинских результатов. |
+| `app/models.py` | Строгие входные схемы профиля, событий, кандидатов и локальных правил. Необязательный `arrival_status=planned/arrived/unknown` — контекст интерфейса, без факта въезда и влияния на правила. Запрет лишних полей/медицинских результатов. |
 | `app/catalog.py` | Источники и версионированный каталог M01–M10 двух вузов. При обновлении seed создаётся новая версия, старый snapshot сохраняется. |
 | `app/engine.py` | Чистый reducer подтверждённых событий, support envelope, три состояния применимости, эпизоды/циклы, дедупликация действий, отдельные временные значения. Неизвестная цель первичного въезда не перекрывает последующее уточнение профиля; новый въезд с неизвестной целью снова требует уточнения. M09 оркестрирует, отдельная карточка только для уникального review. |
 | `app/db.py` | SQLite/WAL, схема, транзакции BEGIN IMMEDIATE. Один процесс приложения. |
@@ -23,14 +27,15 @@
 | `app/max_client.py` | Bot API, проверенный TLS, durable inbox/outbox, polling или webhook, retries, reminders и retention. |
 | `app/certs/` | Публичный сертификат Минцифры, используется только клиентом MAX. |
 | `app/language.py` | RU/EN определение языка и предложение типа события. Optional OpenAI-compatible classifier, безопасный локальный fallback. Ни одного изменения плана из ответа LLM. |
-| `app/static/student.js` | Auth/API, RU/EN, onboarding, typed event forms, task detail, status save, recovery по idempotency key. |
+| `app/static/student.js` | Auth/API, RU/EN без потери черновика, четыре вопроса (ситуация/вуз/въезд/жильё) → План, полное согласие, typed event forms, task detail и следующее реальное действие, status save, recovery по idempotency key. |
 | `app/static/student-ui.js` | 16 экранов, History API/Back/MAX BackButton, восстановление URL после reload, origin/scroll, Hero/stages, уточнения (все `missing_fields` пункта в одной форме и одном PATCH), profile sheets/dirty guard, persisted revision diff и история. |
 | `app/static/roadmap-view.js` | Чистая presentation-логика: M07/M08 → study, выбор Hero независимо от этапа, семантическая дедупликация, прогресс, distinct уточнения. Никакой правовой арифметики. |
-| `app/static/student-ui.css` | Новый student-only стиль по коллажам: timeline, карточки, нижние вкладки, sheets, safe-area и 320px. |
+| `app/static/student-ui.css`, `ryadom-logo.svg` | Student-only система activation-v3: синий Hero, голубые карточки, общий timeline с синими completed/current маркерами, нижние вкладки, RU/EN, sheets, safe-area и 320px. |
 | `tests/roadmap-view.test.cjs` | Инварианты Hero, этапов и прогресса, включая completed+recheck. |
 | `tests/test_ui_revisions.py` | Собственность/replay ревизий, persisted empty diff. |
-| `scripts/preview_redesign.py`, `scripts/check_student_ui.cjs` | Изолированный локальный сервер без MAX и браузерная проверка сценариев с синтетическими профилями, включая пакетное уточнение полей, URL после reload и ширину 320 px. |
-| `app/static/admin.js` | Модельная роль редактора, draft/version, validation, affected preview, publish/archive, доставка. |
+| `scripts/preview_redesign.py`, `scripts/check_student_ui.cjs`, `scripts/check_activation_ui.cjs` | Изолированный локальный сервер без MAX и два браузерных сценария: полный путь, поздний вход/complete/undo/следующий Hero, origin после reload, черновики RU/EN/reload, recheck/read-only, загрузка/ошибка/повтор, удаление, ширины 320/360/390 и 44px. Снимки — `output/activation-v3/`. |
+| `tests/test_activation_profile.py` | Сохранение ситуации и согласия без даты/события, отсутствие влияния на задачи и решения, совместимость старого клиента и валидация enum. |
+| `app/static/admin.js` | Модельная роль редактора, draft/version, validation, affected preview, publish/archive, доставка; общий SVG-логотип без текстовых декоративных стрелок. |
 | `app/static/style.css` | Общий светлый адаптивный student/admin UI: список задач, нижняя навигация, мобильные диалоги, формы и таблицы; без сборки и внешних шрифтов. |
 | `tests/` | Интеграционные проверки движка, API, ролей, публикаций, подписи MAX, повторов и отмены фактов. |
 | `tests/test_persistence.py` | Новый процесс приложения, сохранение сессии/плана/outbox, независимое восстановление snapshot и ограничения файлового пути. |

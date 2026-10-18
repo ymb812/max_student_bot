@@ -25,7 +25,7 @@ const RoadmapView = (() => {
         const completed = eligible.filter(t => t.engine_status === 'actionable' && t.user_status === 'completed').length;
         return {tasks: eligible, total: eligible.length, completed, done: eligible.length > 0 && eligible.length === completed};
     };
-    const currentStage = (tasks, profile) => !profile.entry_at ? 'before'
+    const currentStage = (tasks, profile) => !profile.entry_at ? (profile.arrival_status === 'arrived' ? 'arrival' : 'before')
         : progress(tasks, 'arrival').tasks.some(t => t.user_status !== 'completed' || t.engine_status === 'requires_recheck') ? 'arrival' : 'study';
     const clarifications = tasks => [...new Map(tasks.filter(t => ['conditional', 'needs_review'].includes(t.engine_status)).map(t => [t.task_key, t])).values()];
     return {stages, stage, current, hero, progress, currentStage, clarifications};

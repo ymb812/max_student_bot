@@ -56,7 +56,7 @@ function guard(fn) {
 }
 
 function shell(inner) {
-    return `<div class="shell admin-shell"><aside class="rail"><div class="brand"><span class="brand-mark">↗</span>рядом</div><p>Университетский редактор<br>Модельная роль сотрудника</p><div class="nav"><button class="active" id="reload">Правила вуза</button></div><div class="rail-bottom"><a href="/">Студенческое приложение ↗</a><button class="secondary" data-logout>Выйти</button></div></aside><main class="main"><div class="topbar"><span class="eyebrow">Редактор · ${tenant==='sutd'?'СПбГУПТД':tenant==='leti'?'ЛЭТИ':'Maintainer'}</span><div class="row"><span class="pill">Модельная роль</span><button data-logout>Выйти</button></div></div>${inner}</main></div>`
+    return `<div class="shell admin-shell"><aside class="rail"><div class="brand"><img src="/static/ryadom-logo.svg" width="32" height="32" alt="">рядом</div><p>Университетский редактор<br>Модельная роль сотрудника</p><div class="nav"><button class="active" id="reload">Правила вуза</button></div><div class="rail-bottom"><a href="/">Студенческое приложение</a><button class="secondary" data-logout>Выйти</button></div></aside><main class="main"><div class="topbar"><span class="eyebrow">Редактор · ${tenant==='sutd'?'СПбГУПТД':tenant==='leti'?'ЛЭТИ':'Maintainer'}</span><div class="row"><span class="pill">Модельная роль</span><button data-logout>Выйти</button></div></div>${inner}</main></div>`
 }
 
 function wire() {
@@ -77,7 +77,7 @@ function show(html) {
 }
 
 function login() {
-    root.innerHTML = shell(`<div class="onboard"><div class="eyebrow">Модельная роль сотрудника</div><h1>Вход для редактора</h1><p class="sub">Доступ ограничен одним вузом. Федеральный слой защищён. Изменения здесь демонстрационные.</p><form id="login-form"><label class="field">Ключ редактора<input type="password" name="key" required autocomplete="current-password"></label><div class="actions"><button class="primary">Войти →</button></div></form></div>`);
+    root.innerHTML = shell(`<div class="onboard"><div class="eyebrow">Модельная роль сотрудника</div><h1>Вход для редактора</h1><p class="sub">Доступ ограничен одним вузом. Федеральный слой защищён. Изменения здесь демонстрационные.</p><form id="login-form"><label class="field">Ключ редактора<input type="password" name="key" required autocomplete="current-password"></label><div class="actions"><button class="primary">Войти</button></div></form></div>`);
     wire();
     document.querySelector('#login-form').onsubmit = guard(async e => {
         e.preventDefault();
