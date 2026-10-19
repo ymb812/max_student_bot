@@ -12,3 +12,12 @@ __pycache__
 
 # Original UI prototype is archived outside this project.
 /activation-v3/
+
+# Welcome prototype; the integrated screen lives in app/static.
+/welcome/
+
+private-rollback/
+
+private-proxy/
+
+output/

@@ -14,9 +14,11 @@ let token = sessionStorage.getItem('student_token'),
         tasks: []
     },
     config = {},
-    lang = 'ru',
+    lang = sessionStorage.getItem('ryadom_entry_language') === 'en' ? 'en' : 'ru',
     step = 0;
-let onboardingDraft = null;
+let onboardingDraft = null, onboardingDraftScope = null;
+let onboardingScope = token ? sessionStorage.getItem('ryadom_onboarding_scope_' + token) : null;
+let entryScreen = 'loading', authState = 'loading';
 const tr = (ru, en) => lang === 'en' ? en : ru;
 const content = x => x?.[lang] ?? x?.ru ?? '';
 const today = () => new Date().toLocaleDateString('en-CA', {
@@ -122,7 +124,9 @@ const icon = (name, size = 18) => `<svg width="${size}" height="${size}" viewBox
 
 async function switchLanguage(nextLanguage = lang === 'ru' ? 'en' : 'ru') {
     if (nextLanguage === lang) return;
-    if (!token) {lang = nextLanguage; await landing(); return;}
+    sessionStorage.setItem('ryadom_entry_language', nextLanguage);
+    if (authState !== 'ready') {lang = nextLanguage; renderAuthStatus(); return;}
+    if (!token) {lang = nextLanguage; renderMaxLanding(); return;}
     const draft = captureFormDraft(), wasDirty = dirty, position = scrollY;
     if (profile.consent) {
         profile = await api('/me/profile', 'PATCH', {...profile, language: nextLanguage});
@@ -130,7 +134,7 @@ async function switchLanguage(nextLanguage = lang === 'ru' ? 'en' : 'ru') {
     }
     lang = nextLanguage;
     if (!profile.consent) { ensureOnboardingDraft(); onboardingDraft.language = lang; persistOnboardingDraft(); }
-    profile.consent ? paintRoute() : renderOnboarding();
+    profile.consent ? paintRoute() : renderEntry();
     restoreFormDraft(draft); dirty = wasDirty;
     if (dirty) window.WebApp?.enableClosingConfirmation?.();
     window.scrollTo(0, position);
@@ -140,7 +144,8 @@ async function load() {
     profile = await api('/me/profile');
     lang = profile.language;
     plan = await api('/me/roadmap');
-    profile.consent ? renderPlan() : renderOnboarding();
+    if (profile.consent) {renderPlan(); applyEntryNavigation();}
+    else restoreOnboardingEntry();
     window.scrollTo(0, 0)
 }
 
@@ -161,17 +166,24 @@ function residenceOptions(selected) {
     ].map(([v, l]) => option(v, l, selected)).join('')
 }
 
-function onboardingStorageKey() { return 'ryadom_onboarding_' + token; }
+function onboardingStorageKey() { return 'ryadom_onboarding_' + (onboardingScope || token); }
 function ensureOnboardingDraft() {
-    if (onboardingDraft) return;
+    if (onboardingDraft && onboardingDraftScope === onboardingStorageKey()) return;
+    onboardingDraft = null;
+    onboardingDraftScope = onboardingStorageKey();
     try { onboardingDraft = JSON.parse(sessionStorage.getItem(onboardingStorageKey())); } catch { /* Ignore an invalid local draft. */ }
+    if (!onboardingDraft || typeof onboardingDraft !== 'object' || Array.isArray(onboardingDraft)) onboardingDraft = null;
     if (!onboardingDraft) onboardingDraft = {
         arrival_status: profile.arrival_status !== 'unknown' ? profile.arrival_status : null,
         university_id: profile.university_id || null, visa_regime: null, residence_type: null,
-        language: lang, consent: false, step: 0
+        language: sessionStorage.getItem('ryadom_entry_language') || lang, consent: false, step: 0, started: false
     };
-    step = Math.max(0, Math.min(3, onboardingDraft.step || 0));
-    lang = onboardingDraft.language || lang;
+    // Older clients created empty drafts before the student started answering.
+    if (typeof onboardingDraft.started !== 'boolean') onboardingDraft.started = !!(
+        onboardingDraft.arrival_status || onboardingDraft.visa_regime || onboardingDraft.residence_type || onboardingDraft.step > 0 || onboardingDraft.consent
+    );
+    step = Math.max(0, Math.min(3, Math.floor(Number(onboardingDraft.step) || 0)));
+    lang = onboardingDraft.language === 'en' ? 'en' : 'ru';
 }
 function persistOnboardingDraft() {
     onboardingDraft.step = step;
@@ -179,6 +191,9 @@ function persistOnboardingDraft() {
 }
 function renderOnboarding() {
     ensureOnboardingDraft();
+    entryScreen = 'questions';
+    onboardingDraft.started = true;
+    persistOnboardingDraft();
     const arrived = onboardingDraft.arrival_status === 'arrived';
     const questions = [
         {key:'arrival_status', icon:'plane', title:tr('Вы уже приехали в Россию?', 'Have you arrived in Russia?'), hint:tr('Начнём с того, что важно для вас сейчас.', 'Let’s start with what matters to you now.'), options:[
@@ -193,7 +208,7 @@ function renderOnboarding() {
             ['dorm','university',tr('В общежитии','In a dormitory'),''], ['private','address',tr('В частном жилье','In private accommodation'),''], ['unknown','info',tr('Пока неизвестно','Not sure yet'),'']]}
     ];
     const q = questions[step];
-    history.replaceState({ryadom:true,onboardingStep:step},'',location.href);
+    history.replaceState({ryadom:true,entry:'questions',onboardingStep:step},'',location.href);
     root.innerHTML = shell(`<section class="onboard"><div class="quiz-meta"><span>${tr('Ваш первый план','Your first roadmap')}</span><span>${tr('Вопрос','Question')} ${step+1} ${tr('из','of')} 4</span></div><div class="steps" aria-hidden="true">${[0,1,2,3].map(i=>`<span class="${i<=step?'active':''}"></span>`).join('')}</div><div class="question-icon" aria-hidden="true">${icon(q.icon,27)}</div><h1>${q.title}</h1><p class="quiz-lede">${q.hint}</p><form id="onboard-form"><fieldset class="quiz-options"><legend class="sr-only">${q.title}</legend>${q.options.map(([v,glyph,label,description])=>`<label class="quiz-option"><input type="radio" name="${q.key}" value="${v}" ${onboardingDraft[q.key]===v?'checked':''} required><span class="tile-icon">${icon(glyph,21)}</span><span class="option-copy"><strong>${label}</strong>${description?`<small>${description}</small>`:''}</span><span class="choice-dot" aria-hidden="true"></span></label>`).join('')}</fieldset>${step===3?`<label class="checkbox quiz-consent"><input type="checkbox" name="consent" required ${onboardingDraft.consent?'checked':''}><span>${tr('Согласен на хранение в этом сервисе вуза, дат и статусов процедур для построения плана. Без сканов, номеров паспортов, точного адреса и медицинских результатов. Удалить данные можно в профиле. Срок хранения после последней активности:','I agree to storage of my university, dates and procedure statuses for this roadmap. No scans, passport numbers, exact addresses or medical results. Delete data from your profile. Retention after last activity:')} ${config.privacy_retention_days} ${tr('дней.','days.')}</span></label>`:`<p class="quiz-hint">${icon('info',17)}${tr('Покажем действия для вашей ситуации.','We’ll show actions for your circumstances.')}</p>`}<div class="quiz-footer"><button class="primary wide" id="next" type="submit" ${!onboardingDraft[q.key]||(step===3&&!onboardingDraft.consent)?'disabled':''}>${step===3?tr('Открыть мой план','Open my roadmap'):tr('Продолжить','Continue')}</button><p>${tr('Ответ можно изменить, вернувшись назад.','Go back whenever you need to change an answer.')}</p></div></form></section>`);
     wireShell();
     const form = document.querySelector('#onboard-form');
@@ -206,7 +221,7 @@ function renderOnboarding() {
     form.onsubmit = guard(async e => {
         e.preventDefault();
         if (!form.reportValidity()) return;
-        if (step<3) {step++;persistOnboardingDraft();history.pushState({ryadom:true,onboardingStep:step},'',location.href);renderOnboarding();window.scrollTo(0,0);return;}
+        if (step<3) {step++;persistOnboardingDraft();history.pushState({ryadom:true,entry:'questions',onboardingStep:step},'',location.href);renderOnboarding();focusEntryHeading();return;}
         const missing = questions.findIndex(question=>!onboardingDraft[question.key]);
         if (missing>=0) {step=missing;persistOnboardingDraft();renderOnboarding();return;}
         const next = {...profile, arrival_status:onboardingDraft.arrival_status, university_id:onboardingDraft.university_id,
@@ -471,20 +486,20 @@ async function start() {
             init_data: init
         });
         token = auth.access_token;
+        // This signed user field is read only after the server verified launch data.
+        // A stable scope keeps the session draft when MAX rotates its bearer token.
+        const signedUser = JSON.parse(new URLSearchParams(init).get('user') || '{}');
+        onboardingScope = signedUser.id != null ? 'max_' + signedUser.id : null;
+        if (onboardingScope) sessionStorage.setItem('ryadom_onboarding_scope_' + token, onboardingScope);
         sessionStorage.setItem('student_token', token);
         window.WebApp?.ready?.()
     }
     if (token) {
         try {
             await load();
-            const startParam = window.WebApp?.initDataUnsafe?.start_param; /* navigation only, never identity */
-            if (startParam?.startsWith('task_')) {
-                const t = plan.tasks.find(t => t.deep_link_id === startParam.slice(5));
-                if (t) taskDetail(t.task_key); else toast(tr('Задача больше недоступна. Открыт актуальный план.', 'Task unavailable. Showing the current plan.'))
-            }
             return
         } catch (e) {
-            if(token)throw e;
+            if(token || init)throw e;
             toast(e.message)
         }
     }

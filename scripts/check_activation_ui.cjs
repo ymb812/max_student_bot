@@ -19,7 +19,7 @@ const output=path.resolve('output/activation-v3');fs.mkdirSync(output,{recursive
         }
     };
     try {
-        await page.goto('http://127.0.0.1:8010');await page.locator('[value=arrived]').check();
+        await page.goto('http://127.0.0.1:8010');await page.locator('#start-plan').click();await page.locator('[value=arrived]').check();
         await widthCheck('situation');await page.locator('#next').click();await page.locator('[value=leti]').check();
         await page.locator('[data-language=en]').click();await widthCheck('university EN');await shot('17-university-en');
         await page.locator('#next').click();await page.locator('[value=visa_free]').check();await widthCheck('entry EN');
@@ -115,7 +115,7 @@ const output=path.resolve('output/activation-v3');fs.mkdirSync(output,{recursive
         assert.ok(await page.locator('#field-form button[type=submit]').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}));
         await shot('28-sheet-short-viewport');await page.locator('#field-close').click();await page.setViewportSize({width:390,height:844});
         // Deletion remains reachable and removes the actual server profile/session.
-        const removedToken=await page.evaluate(()=>token);await page.locator('#delete-data').click();await page.locator('#confirm-delete').click();await page.locator('[name=arrival_status]').first().waitFor();
+        const removedToken=await page.evaluate(()=>token);await page.locator('#delete-data').click();await page.locator('#confirm-delete').click();await page.locator('#start-plan').waitFor();
         const removed=await page.request.get('http://127.0.0.1:8010/api/me/profile',{headers:{Authorization:'Bearer '+removedToken}});assert.equal(removed.status(),401);
         assert.deepEqual(errors,[]);
         console.log('PASS: 4-question RU/EN, consent, full catalogue, late-entry complete/undo/next Hero, empty stage, origin+reload, event+sheet draft RU/EN/reload, stable idempotency key, all 12 events, recheck/read-only, loading/error/retry, short viewport, delete, 320/360/390px and 44px targets.');

@@ -14,6 +14,7 @@ fs.mkdirSync(output,{recursive:true});
     const title=async text=>{await page.getByRole('heading',{name:text,exact:true}).waitFor();};
     try {
         await page.goto('http://127.0.0.1:8010');
+        await page.locator('#start-plan').click();
         await page.locator('[name=arrival_status]').first().waitFor();await shot('01-situation');
         assert.equal(await page.locator('#next').isDisabled(),true);
         await page.locator('[value=arrived]').check();
@@ -118,7 +119,7 @@ fs.mkdirSync(output,{recursive:true});
         await page.reload();await page.locator('#result-plan').waitFor();assert.ok((await page.locator('body').innerText()).includes('Событие сохранено, задачи не изменились.'));
         const plannedPage=await browser.newPage({viewport:{width:390,height:844}});
         plannedPage.on('pageerror',e=>errors.push(e.message));await plannedPage.route('https://st.max.ru/**',r=>r.abort());
-        await plannedPage.goto('http://127.0.0.1:8010');await plannedPage.locator('[value=planned]').check();
+        await plannedPage.goto('http://127.0.0.1:8010');await plannedPage.locator('#start-plan').click();await plannedPage.locator('[value=planned]').check();
         await plannedPage.locator('#next').click();await plannedPage.locator('[value=sutd]').check();await plannedPage.locator('#next').click();
         await plannedPage.locator('[value=visa]').check();await plannedPage.locator('#next').click();await plannedPage.locator('[value=unknown]').check();
         await plannedPage.locator('[name=consent]').check();await plannedPage.locator('#next').click();await plannedPage.locator('#open-clarifications').click();

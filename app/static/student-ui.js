@@ -35,13 +35,14 @@ function lockedStatusReason(t) {
 function languageControls() {
     return `<div class="language-switch" role="group" aria-label="${tr('Язык приложения','App language')}">${['ru','en'].map(l=>`<button type="button" data-language="${l}" aria-pressed="${lang===l}" aria-label="${l==='ru'?'Русский':'English'}" class="${lang===l?'selected':''}">${l.toUpperCase()}</button>`).join('')}</div>`;
 }
-function shell(inner) {
+function shell(inner, authOnly=false) {
     document.documentElement.lang = lang;
+    const consented = profile.consent && !authOnly;
     const section = ['events', 'event', 'result'].includes(route.name) ? 'events' : ['profile', 'edit'].includes(route.name) ? 'profile' : 'plan';
     const nested = !['plan', 'profile', 'events'].includes(route.name);
-    const back = profile.consent ? nested : step>0;
+    const back = !authOnly && (consented ? nested : entryScreen === 'questions');
     const nav = `<nav class="bottom-tabs" aria-label="${tr('Основная навигация', 'Main navigation')}">${[['plan','address','План','Plan'],['events','event','Событие','Event'],['profile','profile','Мои данные','My information']].map(([id, glyph, ru, en]) => `<button data-nav="${id}" class="${section===id?'active':''}" ${section===id?'aria-current="page"':''}><span class="nav-icon">${icon(glyph,21)}</span><span>${tr(ru,en)}</span></button>`).join('')}</nav>`;
-    return `<div class="ryadom-shell ${!profile.consent?'is-onboarding':''}"><header class="app-header">${back?`<button class="back-button" data-back aria-label="${tr('Назад','Back')}">${icon('back',20)}<span>${tr('Назад','Back')}</span></button>`:`<span class="app-brand"><img src="/static/ryadom-logo.svg" width="29" height="29" alt=""><span class="brand-name">${tr('Рядом','Ryadom')}</span></span>`}${languageControls()}</header><main class="screen" id="screen">${inner}</main>${profile.consent?nav:''}</div>`;
+    return `<div class="ryadom-shell ${!consented?'is-onboarding':''} ${!consented && entryScreen==='welcome'?'is-welcome':''}"><header class="app-header">${back?`<button class="back-button" data-back aria-label="${tr('Назад','Back')}">${icon('back',20)}<span>${tr('Назад','Back')}</span></button>`:`<span class="app-brand"><img src="/static/ryadom-logo.svg" width="29" height="29" alt=""><span class="brand-name">${tr('Рядом','Ryadom')}</span></span>`}${languageControls()}</header><main class="screen" id="screen">${inner}</main>${consented?nav:''}</div>`;
 }
 function wireLanguageControls() {
     document.querySelectorAll('[data-language]').forEach(b=>b.onclick=guard(()=>switchLanguage(b.dataset.language)));
@@ -53,7 +54,7 @@ function wireShell() {
     const backButton = window.WebApp?.BackButton;
     if (backButton) {
         backButton.offClick?.(goBack);
-        if ((profile.consent && !['plan','events','profile'].includes(route.name)) || (!profile.consent && step>0)) {backButton.show?.();backButton.onClick?.(goBack);}
+        if ((profile.consent && !['plan','events','profile'].includes(route.name)) || (!profile.consent && entryScreen==='questions')) {backButton.show?.();backButton.onClick?.(goBack);}
         else backButton.hide?.();
     }
 }
@@ -71,7 +72,7 @@ function restoreFormDraft(draft) {
 }
 function clearFormDraft() { sessionStorage.removeItem(formDraftKey()); }
 function clearSessionDrafts() {
-    for(const key of Object.keys(sessionStorage))if(key.startsWith('ryadom_form_'+token+'_')||key===onboardingStorageKey())sessionStorage.removeItem(key);
+    for(const key of Object.keys(sessionStorage))if(key.startsWith('ryadom_form_'+token+'_')||key===onboardingStorageKey()||key==='ryadom_onboarding_scope_'+token||(onboardingScope&&key.startsWith('ryadom_onboarding_scope_')&&sessionStorage.getItem(key)===onboardingScope))sessionStorage.removeItem(key);
 }
 function restoreStoredFormDraft() {
     let saved;try {saved=JSON.parse(sessionStorage.getItem(formDraftKey()));}catch {return;}
@@ -104,14 +105,22 @@ function navigate(next, replace=false) {
     });
 }
 function goBack() {
-    if(!profile.consent) {if(step>0)history.back();return;}
+    if(!profile.consent) {if(authState==='ready' && entryScreen==='questions')history.back();return;}
     confirmLeave(() => {
         const next = route.name === 'result' ? {name:'plan'} : routeStack.pop() || {name:'plan'};
         route = next; dirty = false; writeLocation(true); paintRoute(); window.scrollTo(0,next.scroll||0);
     });
 }
 window.addEventListener('popstate', e => {
-    if(!profile.consent && onboardingDraft) {step=Math.max(0,Math.min(3,e.state?.onboardingStep||0));persistOnboardingDraft();renderOnboarding();window.scrollTo(0,0);return;}
+    if(authState!=='ready')return;
+    if(!profile.consent) {
+        if (!onboardingDraft) return;
+        if(e.state?.entry==='questions') {step=Math.max(0,Math.min(3,e.state.onboardingStep||0));persistOnboardingDraft();renderOnboarding();}
+        else renderWelcome();
+        focusEntryHeading();return;
+    }
+    // Consented students never return to welcome/questions through old history entries.
+    if(e.state?.entry || e.state?.onboardingStep!==undefined) {route={name:'plan'};routeStack=[];writeLocation(true);paintRoute();return;}
     const next = route.name==='result' ? {name:'plan'} : e.state?.route || {name:'plan'}, stack = route.name==='result' ? [] : e.state?.stack || [];
     if (dirty) { writeLocation(false); confirmLeave(() => {route=next; routeStack=stack; writeLocation(true); paintRoute();}); }
     else {route=next; routeStack=stack; paintRoute(); window.scrollTo(0,next.scroll||0);}
@@ -132,7 +141,7 @@ function showDetail(html) { root.innerHTML=shell(`<article class="task-detail">$
 function paintRoute() {
     painting++;
     if(!dirty)window.WebApp?.disableClosingConfirmation?.();
-    if (!profile.consent) {renderOnboarding(); return;}
+    if (!profile.consent) {renderEntry(); return;}
     switch(route.name) {
         case 'plan': homeView(); break;
         case 'stages': stagesView(); break;
@@ -334,23 +343,83 @@ function fieldEditorView() {
         profile=await api('/me/profile','PATCH',next);await refreshSnapshot();lang=profile.language;clearFormDraft();dirty=false;goBack();toast(tr('Данные сохранены','Information saved'));
     });
 }
+function focusEntryHeading() {
+    const title=root.querySelector('h1');
+    title?.setAttribute('tabindex','-1');title?.focus({preventScroll:true});window.scrollTo(0,0);
+}
+function renderEntry() {entryScreen==='questions'?renderOnboarding():renderWelcome();}
+function restoreOnboardingEntry() {
+    ensureOnboardingDraft();
+    if(!onboardingDraft.started) {renderWelcome();return;}
+    // Rebuild a return path when a saved draft is opened in a fresh history entry.
+    if(history.state?.entry!=='questions') {
+        history.replaceState({ryadom:true,entry:'welcome'},'',location.href);
+        for(let i=0;i<=step;i++) history.pushState({ryadom:true,entry:'questions',onboardingStep:i},'',location.href);
+    }
+    renderOnboarding();
+}
+function welcomePreview() {
+    // Illustration only: never reads or writes profile, roadmap or task statuses.
+    const p=lang==='en'?{
+        title:'Your roadmap at a glance',example:'Example',stages:['Before arrival','After arrival','During your studies'],
+        now:'Current stage in this example',next:'Next step',task:'Contact the office after arrival',note:'Your answers will help us find your stage and actions.'
+    }:{
+        title:'Так выглядит ваш маршрут',example:'Пример',stages:['До приезда','После приезда','Во время учебы'],
+        now:'Текущий этап в примере',next:'Следующий шаг',task:'Обратиться в офис после приезда',note:'Ваш этап и действия определим по ответам.'
+    };
+    return `<section class="rp rp-a" aria-label="${p.example}"><div class="rp-head"><h2>${p.title}</h2><span class="rp-badge">${p.example}</span></div><div class="rp-action"><span class="rp-label">${p.next}</span><h3>${p.task}</h3></div><ol class="rp-list">${p.stages.map((s,i)=>`<li class="rp-row ${i===0?'rp-done':i===1?'rp-on':''}"><span class="rp-dot" aria-hidden="true">${i===0?'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 8 2.5 2.5L12 5"/></svg>':''}</span><span class="rp-icon" aria-hidden="true">${icon(['plane','address','study'][i],16)}</span><span class="rp-stage">${s}${i===1?`<small class="rp-sub">${p.now}</small>`:''}</span></li>`).join('')}</ol><p class="rp-foot">${p.note}</p></section>`;
+}
+function renderWelcome() {
+    entryScreen='welcome';
+    history.replaceState({ryadom:true,entry:'welcome'},'',location.href);
+    root.innerHTML=shell(`<h1 class="welcome-title">${tr('Ваш план<br>для жизни и учебы<br><em>в России</em>','Your plan for<br>life and study<br><em>in Russia</em>')}</h1>${welcomePreview()}<p class="welcome-intro">${tr('<strong>Начнем с 4 коротких вопросов</strong><br>Узнаем, на каком вы этапе, и соберем персональный план действий.','<strong>Start with 4 quick questions</strong><br>Tell us where you are on your journey. We’ll build a personal action plan for you.')}</p><div class="welcome-footer"><button class="primary" id="start-plan" type="button">${tr('Составить мой план','Build my plan')}</button></div>`);
+    wireShell();
+    document.querySelector('#start-plan').onclick=()=>{
+        if(authState!=='ready'||!token)return;
+        ensureOnboardingDraft();step=0;onboardingDraft.started=true;persistOnboardingDraft();
+        history.pushState({ryadom:true,entry:'questions',onboardingStep:0},'',location.href);
+        renderOnboarding();focusEntryHeading();
+    };
+}
+function renderAuthStatus() {
+    entryScreen=authState;
+    root.innerHTML=shell(authState==='error'?`${heading(tr('Не удалось войти','Could not sign in'))}<p role="alert">${tr('Не удалось проверить вход. Проверьте соединение и повторите попытку.','We could not verify your sign-in. Check your connection and try again.')}</p><button class="primary wide" id="retry-auth">${tr('Повторить вход','Retry sign-in')}</button>`:`<div class="loading" role="status">${tr('Проверяем вход…','Checking sign-in…')}</div>`,true);
+    wireShell();
+    document.querySelector('#retry-auth')?.addEventListener('click',authenticateEntry);
+}
+function renderMaxLanding() {
+    entryScreen='max';
+    root.innerHTML=shell(`${heading(tr('Ваш план — в MAX','Your roadmap in MAX'))}<p class="sub">${tr('Откройте приложение из бота, чтобы сохранить план в своем аккаунте.','Open the app from the bot to save your roadmap to your account.')}</p><a class="primary wide" href="https://max.ru/${esc(config.max_bot_username||'t647_hakaton_max_bot')}">${tr('Открыть в MAX','Open in MAX')}</a>`);wireShell();
+}
 async function landing() {
     if(!token && config.demo_mode) {
         const auth=await api('/auth/demo','POST');token=auth.access_token;sessionStorage.setItem('student_token',token);
+        onboardingScope=null;
         sessionStorage.removeItem(demoStorageKey);profile=await api('/me/profile');plan=await api('/me/roadmap');
     }
-    if(token) { renderOnboarding();return; }
-    root.innerHTML=shell(`${heading(tr('Ваш план — в MAX','Your roadmap in MAX'))}<p class="sub">${tr('Откройте приложение из бота, чтобы сохранить план в своём аккаунте.','Open the app from the bot to save your roadmap to your account.')}</p><a class="primary wide" href="https://max.ru/${esc(config.max_bot_username||'t647_hakaton_max_bot')}">${tr('Открыть в MAX','Open in MAX')}</a>`);wireShell();
+    if(token) {restoreOnboardingEntry();return;}
+    renderMaxLanding();
 }
-start().then(()=>{
-    if(!profile.consent)return;
+let entryNavigationApplied=false;
+function applyEntryNavigation() {
+    if(entryNavigationApplied || !profile.consent)return;
+    entryNavigationApplied=true;
     const params=requestedScreen, name=params.get('screen');
     if(name && ['plan','stages','stage','task','clarifications','review','events','event','result','history','profile','edit','clarify'].includes(name)) {
         const saved=requestedNavigation?.ryadom&&requestedNavigation.route?.name===name?requestedNavigation:null;
         route=saved?.route||{name};for(const key of ['stage','key','revision','eventId','reason'])if(params.has(key))route[key]=params.get(key);
         routeStack=saved?.stack||[{name:'plan'}];writeLocation(true);paintRoute();
+        return;
     }
-}).catch(e=>{
-    root.innerHTML=shell(`${heading(tr('Не удалось открыть приложение','Could not open the app'))}<p>${esc(e.message)}</p><button class="primary wide" id="retry">${tr('Повторить','Retry')}</button>`);wireShell();
-    document.querySelector('#retry').onclick=()=>location.reload();
-});
+    const startParam=window.WebApp?.initDataUnsafe?.start_param; /* navigation only, never identity */
+    if(startParam?.startsWith('task_')) {
+        const t=plan.tasks.find(t=>t.deep_link_id===startParam.slice(5));
+        if(t)taskDetail(t.task_key);else toast(tr('Задача больше недоступна. Открыт актуальный план.','Task unavailable. Showing the current plan.'));
+    }
+}
+async function authenticateEntry() {
+    authState='loading';renderAuthStatus();
+    try {await start();authState='ready';}
+    catch {authState='error';renderAuthStatus();}
+}
+authenticateEntry();
