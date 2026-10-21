@@ -20,8 +20,10 @@ def test_situation_persists_without_facts_or_dates(client):
     profile['arrival_status'] = 'planned'
     assert client.patch('/api/me/profile', headers=headers, json=profile).status_code == 200
     after = client.get('/api/me/roadmap', headers=headers).json()
-    assert before['tasks'] == after['tasks']
-    assert before['decisions'] == after['decisions']
+    # New route context affects availability, never fabricates the missing event/date.
+    assert next(t for t in before['tasks'] if t['process']=='invitation')['availability']=='past'
+    assert next(t for t in after['tasks'] if t['process']=='invitation')['availability']=='available'
+    assert next(t for t in before['tasks'] if t['process']=='entry_context')['missing_fields']==['entry_at']
     assert client.get('/api/me/events', headers=headers).json()['events'] == []
     # Older clients may omit the new field; only the documented enum is accepted.
     del profile['arrival_status']

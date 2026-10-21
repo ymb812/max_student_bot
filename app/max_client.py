@@ -145,6 +145,8 @@ async def worker(database, settings):
                                 if (
                                     row["user_status"] == "completed"
                                     or task["engine_status"] != "actionable"
+                                    or task.get("availability", "available") != "available"
+                                    or task.get("workflow_status") == "waiting"
                                 ):
                                     continue
                                 due = [
@@ -209,8 +211,25 @@ async def worker(database, settings):
                 max_id = body.get("max_user_id") or (
                     user["max_user_id"] if user else None
                 )
+                reminder_obsolete = False
+                if body["kind"] == "reminder" and user:
+                    with database.transaction() as db:
+                        task_row = db.execute(
+                            "SELECT * FROM tasks WHERE task_key=? AND user_id=?",
+                            (body.get("task_key"), row["user_id"]),
+                        ).fetchone()
+                    task = json.loads(task_row["body"]) if task_row else {}
+                    reminder_obsolete = (
+                        not json.loads(user["profile"])["reminders_enabled"]
+                        or not task_row
+                        or task_row["user_status"] == "completed"
+                        or task.get("engine_status") != "actionable"
+                        or task.get("availability", "available") != "available"
+                        or task.get("workflow_status") == "waiting"
+                        or (body.get("timing") is not None and body["timing"] not in task.get("dates", []))
+                    )
                 if body["kind"] != "navigation" and (
-                    not user or not json.loads(user["profile"])["consent"]
+                    not user or not json.loads(user["profile"])["consent"] or reminder_obsolete
                 ):
                     with database.transaction() as db:
                         db.execute(
@@ -345,7 +364,7 @@ def delete_user(db, user_id):
             "DELETE FROM outbox WHERE user_id='bot-navigation' AND json_extract(body,'$.max_user_id')=?",
             (user["max_user_id"],),
         )
-    for table in ("events", "tasks", "revisions", "outbox", "candidates", "sessions"):
+    for table in ("events", "tasks", "revisions", "outbox", "candidates", "sessions", "workflow_reports", "onboarding_receipts"):
         db.execute(f"DELETE FROM {table} WHERE user_id=?", (user_id,))
     db.execute("DELETE FROM users WHERE id=?", (user_id,))
 

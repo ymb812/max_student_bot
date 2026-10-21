@@ -159,6 +159,11 @@
         ],
         "summary": "Get Profile",
         "operationId": "get_profile_api_me_profile_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -170,34 +175,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Student"
-        ],
-        "summary": "Remove Profile",
-        "operationId": "remove_profile_api_me_profile_delete",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       },
       "patch": {
         "tags": [
@@ -205,15 +183,39 @@
         ],
         "summary": "Update Profile",
         "operationId": "update_profile_api_me_profile_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fields"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Profile"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -236,12 +238,197 @@
               }
             }
           }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Remove Profile",
+        "operationId": "remove_profile_api_me_profile_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/onboarding": {
+      "post": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Onboarding",
+        "operationId": "onboarding_api_me_onboarding_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         },
         "security": [
           {
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/me/results": {
+      "get": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "List Results",
+        "operationId": "list_results_api_me_results_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/tasks/{task_key}/results": {
+      "post": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Save Result",
+        "operationId": "save_result_api_me_tasks__task_key__results_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowResult"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/results/{result_id}": {
+      "delete": {
+        "tags": [
+          "Student"
+        ],
+        "summary": "Retract Result",
+        "operationId": "retract_result_api_me_results__result_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/me/roadmap": {
@@ -1485,6 +1672,7 @@
                   "residence_permit",
                   "unknown",
                   "active",
+                  "admitted",
                   "leave",
                   "transferred",
                   "expelled",
@@ -1551,6 +1739,67 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "OnboardingInput": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "preparation": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "not_started",
+              "requested",
+              "invitation_received",
+              "visa_submitted",
+              "visa_received"
+            ],
+            "title": "Preparation",
+            "default": "unknown"
+          },
+          "office_package": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "not_started",
+              "partial",
+              "completed"
+            ],
+            "title": "Office Package",
+            "default": "unknown"
+          },
+          "registration": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "not_started",
+              "submitted",
+              "received"
+            ],
+            "title": "Registration",
+            "default": "unknown"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Confirmed"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "confirmed",
+          "idempotency_key"
+        ],
+        "title": "OnboardingInput"
       },
       "PreviewResponse": {
         "properties": {
@@ -1624,7 +1873,7 @@
               "unknown"
             ],
             "title": "Arrival Status",
-            "description": "Presentation context only; does not record entry or change rule applicability.",
+            "description": "Journey context; arrived without entry_at asks for the date, never fabricates an entry event.",
             "default": "unknown"
           },
           "age_band": {
@@ -1675,6 +1924,7 @@
           "study_status": {
             "type": "string",
             "enum": [
+              "admitted",
               "active",
               "leave",
               "transferred",
@@ -1730,6 +1980,16 @@
             ],
             "title": "Planned Entry"
           },
+          "preparation_state": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "not_started"
+            ],
+            "title": "Preparation State",
+            "description": "Initial self-report only. Submitted/received readiness comes from workflow results.",
+            "default": "unknown"
+          },
           "education_start": {
             "anyOf": [
               {
@@ -1765,6 +2025,19 @@
               }
             ],
             "title": "Arrival At"
+          },
+          "arrival_at_episode_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival At Episode Id",
+            "description": "Server-managed binding of a city-arrival clarification to its entry episode; direct updates are ignored."
           },
           "entry_purpose": {
             "type": "string",
@@ -1906,6 +2179,17 @@
           "demo_model": {
             "type": "boolean",
             "title": "Demo Model"
+          },
+          "hero_task_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Task Key"
           }
         },
         "additionalProperties": true,
@@ -2076,6 +2360,30 @@
             "maxLength": 1000,
             "minLength": 3,
             "title": "Evidence Note"
+          },
+          "source_section": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Source Section",
+            "default": ""
+          },
+          "source_purpose_i18n": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "type": "object",
+            "title": "Source Purpose I18N"
+          },
+          "source_navigation_verified": {
+            "type": "boolean",
+            "title": "Source Navigation Verified",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -2265,6 +2573,52 @@
           "demo_model": {
             "type": "boolean",
             "title": "Demo Model"
+          },
+          "process": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "future",
+              "past"
+            ],
+            "title": "Availability",
+            "default": "available"
+          },
+          "workflow_status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "waiting",
+              "partial",
+              "needs_help",
+              "completed"
+            ],
+            "title": "Workflow Status",
+            "default": "not_started"
+          },
+          "result_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Result Actions",
+            "default": []
+          },
+          "priority_rank": {
+            "type": "integer",
+            "title": "Priority Rank",
+            "default": 9999
           }
         },
         "additionalProperties": true,
@@ -2359,6 +2713,103 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkflowResult": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "submitted",
+              "received",
+              "partial",
+              "completed",
+              "question",
+              "question_sent",
+              "clarified"
+            ],
+            "title": "Outcome"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "document_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Expiry"
+          },
+          "checklist": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "documents",
+                "arrival",
+                "housing"
+              ]
+            },
+            "type": "array",
+            "title": "Checklist"
+          },
+          "missing_documents": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Missing Documents"
+          },
+          "external_result": {
+            "type": "boolean",
+            "title": "External Result",
+            "default": false
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Confirmed"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key"
+          },
+          "supersedes_report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Report Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "outcome",
+          "confirmed",
+          "idempotency_key"
+        ],
+        "title": "WorkflowResult"
       }
     },
     "securitySchemes": {

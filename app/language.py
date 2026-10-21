@@ -61,8 +61,9 @@ async def propose_event(text, settings):
                 response.raise_for_status()
                 parsed = json.loads(response.json()["choices"][0]["message"]["content"])
                 if (
-                    parsed.get("type") in KEYWORDS
-                    and isinstance(parsed.get("confidence"), (float, int))
+                    isinstance(parsed, dict)
+                    and parsed.get("type") in KEYWORDS
+                    and type(parsed.get("confidence")) in (float, int)
                     and 0.7 <= parsed["confidence"] <= 1
                     and parsed.get("language") in ("ru", "en")
                 ):

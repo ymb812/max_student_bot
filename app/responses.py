@@ -38,6 +38,11 @@ class TaskResponse(OpenResponse):
     completed_at: str | None
     priority_bucket: Literal["now", "soon", "later"]
     demo_model: bool
+    process: str | None = None
+    availability: Literal["available", "future", "past"] = "available"
+    workflow_status: Literal["not_started", "waiting", "partial", "needs_help", "completed"] = "not_started"
+    result_actions: list[str] = []
+    priority_rank: int = 9999
 
 
 class RoadmapResponse(OpenResponse):
@@ -46,6 +51,7 @@ class RoadmapResponse(OpenResponse):
     effective_profile: dict[str, Any]
     timezone: str
     demo_model: bool
+    hero_task_key: str | None = None
 
 
 class EventResponse(OpenResponse):

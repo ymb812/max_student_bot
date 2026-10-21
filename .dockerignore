@@ -21,3 +21,6 @@ private-rollback/
 private-proxy/
 
 output/
+
+# Analysis/reference package is not part of the runtime image.
+developer-package-2026-10-21/

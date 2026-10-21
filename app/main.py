@@ -25,6 +25,8 @@ from app.models import (
     RuleDraft,
     TaskStatus,
     TextRequest,
+    OnboardingInput,
+    WorkflowResult,
 )
 from app.service import (
     draft_body,
@@ -37,6 +39,9 @@ from app.service import (
     uid,
     validate_rule,
     simulate_rule,
+    reports_for,
+    record_result,
+    initialize_route,
 )
 from app.responses import (
     AuthResponse,
@@ -45,7 +50,8 @@ from app.responses import (
     RulesResponse,
     PreviewResponse,
 )
-from app.timeutil import moscow_today
+from app.timeutil import MSK, moscow_today
+from app.workflow import rank_tasks
 
 
 def create_app(settings=None):
@@ -155,6 +161,7 @@ def create_app(settings=None):
     def config():
         return {
             "demo_mode": settings.demo_mode,
+            "max_bot_username": settings.max_bot_username,
             "llm_enabled": bool(settings.llm_base_url and settings.llm_model),
             "universities": ["sutd", "leti"],
             "privacy_retention_days": settings.retention_days,
@@ -218,12 +225,22 @@ def create_app(settings=None):
             return json.loads(user["profile"])
 
     @app.patch("/api/me/profile", response_model=Profile, tags=["Student"])
-    def update_profile(body: Profile, s=Depends(student)):
+    def update_profile(body: Profile, fields: str | None = Query(default=None, max_length=500), s=Depends(student)):
         with database.transaction() as db:
             old = db.execute(
                 "SELECT profile FROM users WHERE id=?", (s["user_id"],)
             ).fetchone()
             old_profile = json.loads(old["profile"])
+            old_facts = snapshot(db, s["user_id"])["facts"]
+            selected = set(fields.split(",")) if fields else None
+            if selected:
+                if not selected <= set(Profile.model_fields):
+                    raise HTTPException(422, "Unknown profile fields")
+                try:
+                    supplied = body.model_dump(mode="json")
+                    body = Profile.model_validate({**old_profile, **{k: supplied[k] for k in selected}})
+                except ValueError as exc:
+                    raise HTTPException(422, "Inconsistent profile fields") from exc
             if (
                 old_profile["university_id"]
                 and body.university_id != old_profile["university_id"]
@@ -234,18 +251,70 @@ def create_app(settings=None):
                 )
             if old_profile["consent"] and not body.consent:
                 raise HTTPException(409, "Use profile deletion to withdraw consent")
+            stored_profile = body.model_dump(mode="json")
+            arrival_changed = ("arrival_at" in selected) if selected is not None else stored_profile["arrival_at"] != old_profile.get("arrival_at")
+            if arrival_changed and body.arrival_at and old_facts.get("entry_at") and body.arrival_at.astimezone(MSK).date().isoformat() < old_facts["entry_at"]:
+                raise HTTPException(422, "City arrival cannot precede the current entry")
+            stored_profile["arrival_at_episode_id"] = (
+                old_facts["_entry_episode"] if arrival_changed else old_profile.get("arrival_at_episode_id")
+            )
+            # Receipt facts are projected over the original profile document.
+            # Replacing that baseline would orphan the receipt's renewal cycle.
+            for field, result_field in (("visa_expiry", "visa_result_id"), ("registration_expiry", "registration_result_id")):
+                if old_facts.get(result_field) and not (field == "visa_expiry" and body.visa_regime == "visa_free"):
+                    stored_profile[field] = old_profile.get(field)
             db.execute(
                 "UPDATE users SET profile=?,updated_at=? WHERE id=?",
-                (dumps(body.model_dump(mode="json")), stamp(), s["user_id"]),
+                (dumps(stored_profile), stamp(), s["user_id"]),
             )
+            for field, result_field in (("visa_expiry", "visa_result_id"), ("registration_expiry", "registration_result_id")):
+                value = body.model_dump(mode="json")[field]
+                changed = (field in selected and value != old_facts.get(field)) if selected is not None else value != old_profile.get(field)
+                if changed and old_facts.get(result_field):
+                    report = next(r for r in reports_for(db, s["user_id"]) if r["id"] == old_facts[result_field])
+                    request = {**report["body"]["request"], "document_expiry": value,
+                               "supersedes_report_id": report["id"], "idempotency_key": "clarify-" + uid()}
+                    record_result(db, s["user_id"], report["task_key"], WorkflowResult.model_validate(request), recalc=False)
             recalculate(db, s["user_id"], "profile_updated")
-            return body
+            return stored_profile
 
     @app.delete("/api/me/profile", tags=["Student"])
     def remove_profile(s=Depends(student)):
         with database.transaction() as db:
             delete_user(db, s["user_id"])
         return {"deleted": True}
+
+    @app.post("/api/me/onboarding", tags=["Student"])
+    def onboarding(body: OnboardingInput, s=Depends(student)):
+        with database.transaction() as db:
+            revision, created = initialize_route(db, s["user_id"], body)
+        return {"revision_id": revision, "created": created}
+
+    @app.get("/api/me/results", tags=["Student"])
+    def list_results(s=Depends(student)):
+        with database.transaction() as db:
+            return {"results": reports_for(db, s["user_id"])}
+
+    @app.post("/api/me/tasks/{task_key}/results", status_code=201, tags=["Student"])
+    def save_result(task_key: str, body: WorkflowResult, s=Depends(student)):
+        with database.transaction() as db:
+            rid, created = record_result(db, s["user_id"], task_key, body)
+            revision = event_revision_id(db, s["user_id"], rid, "result_corrected" if body.supersedes_report_id else "result_reported")
+        return {"result_id": rid, "created": created, "revision_id": revision, "verification": "user_attested"}
+
+    @app.delete("/api/me/results/{result_id}", tags=["Student"])
+    def retract_result(result_id: str, s=Depends(student)):
+        with database.transaction() as db:
+            row = db.execute("SELECT * FROM workflow_reports WHERE id=? AND user_id=?", (result_id, s["user_id"])).fetchone()
+            if not row:
+                raise HTTPException(404, "Result not found")
+            if not row["retracted_at"]:
+                if db.execute("SELECT id FROM workflow_reports WHERE supersedes_report_id=? AND retracted_at IS NULL", (result_id,)).fetchone():
+                    raise HTTPException(409, "Retract the replacement first")
+                db.execute("UPDATE workflow_reports SET retracted_at=? WHERE id=?", (stamp(), result_id))
+                recalculate(db, s["user_id"], "result_retracted", result_id, force_revision=True)
+            revision = event_revision_id(db, s["user_id"], result_id, "result_retracted")
+        return {"result_id": result_id, "retracted": True, "revision_id": revision}
 
     @app.get("/api/me/roadmap", response_model=RoadmapResponse, tags=["Student"])
     def roadmap(s=Depends(student)):
@@ -268,12 +337,14 @@ def create_app(settings=None):
             facts = {
                 k: v for k, v in calculated["facts"].items() if not k.startswith("_")
             }
+            hero_key = rank_tasks(tasks, moscow_today().isoformat())
             return {
                 "tasks": tasks,
                 "decisions": calculated["decisions"],
                 "effective_profile": facts,
                 "timezone": "Europe/Moscow",
                 "demo_model": s["user_id"].startswith("demo-"),
+                "hero_task_key": hero_key,
             }
 
     @app.patch("/api/me/tasks/{task_key}/status", tags=["Student"])
@@ -286,6 +357,8 @@ def create_app(settings=None):
             if not row:
                 raise HTTPException(404, "Task not found")
             task = json.loads(row["body"])
+            if task.get("process") and (task["process"] in ("invitation", "initial_visa", "trip", "entry_context") or task.get("availability") != "available"):
+                raise HTTPException(409, "Use a concrete process result instead of a generic status")
             if task["engine_status"] == "superseded":
                 raise HTTPException(409, "This task has been superseded")
             if (

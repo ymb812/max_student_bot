@@ -14,7 +14,7 @@ class Profile(StrictModel):
     language: Literal["ru", "en"] = "ru"
     arrival_status: Literal["planned", "arrived", "unknown"] = Field(
         default="unknown",
-        description="Presentation context only; does not record entry or change rule applicability.",
+        description="Journey context; arrived without entry_at asks for the date, never fabricates an entry event.",
     )
     age_band: Literal["adult", "minor", "unknown"] = "unknown"
     citizenship: str | None = Field(default=None, min_length=2, max_length=60)
@@ -23,15 +23,17 @@ class Profile(StrictModel):
         "unknown"
     )
     study_status: Literal[
-        "active", "leave", "transferred", "expelled", "graduated", "working", "unknown"
+        "admitted", "active", "leave", "transferred", "expelled", "graduated", "working", "unknown"
     ] = "unknown"
     study_form: Literal["full_time", "part_time", "unknown"] = "unknown"
     stay_over_90_days: bool | None = None
     residence_type: Literal["dorm", "private", "other", "unknown"] = "unknown"
     planned_entry: date | None = None
+    preparation_state: Literal["unknown", "not_started"] = Field(default="unknown", description="Initial self-report only. Submitted/received readiness comes from workflow results.")
     education_start: date | None = None
     entry_at: date | None = None
     arrival_at: datetime | None = None
+    arrival_at_episode_id: str | None = Field(default=None, max_length=100, description="Server-managed binding of a city-arrival clarification to its entry episode; direct updates are ignored.")
     entry_purpose: Literal["study", "other", "unknown"] = "unknown"
     visa_expiry: date | None = None
     registration_expiry: date | None = None
@@ -45,6 +47,8 @@ class Profile(StrictModel):
     def consistent(self):
         if self.arrival_at and self.arrival_at.tzinfo is None:
             raise ValueError("arrival_at requires a timezone")
+        if self.arrival_at and (self.arrival_at.astimezone(MSK).date() > moscow_today() or (self.entry_at and self.arrival_at.astimezone(MSK).date() < self.entry_at)):
+            raise ValueError("City arrival must follow entry and cannot be in the future")
         if self.visa_regime == "visa_free" and self.visa_expiry:
             raise ValueError("visa_expiry is only allowed in the visa branch")
         for value in (self.entry_at, self.last_medical_completed_at):
@@ -86,6 +90,7 @@ class EventPayload(StrictModel):
             "residence_permit",
             "unknown",
             "active",
+            "admitted",
             "leave",
             "transferred",
             "expelled",
@@ -136,6 +141,7 @@ class EventInput(StrictModel):
         ):
             raise ValueError("Invalid migration status")
         if self.type == "enrolment_changed" and self.payload.status not in (
+            "admitted",
             "active",
             "leave",
             "transferred",
@@ -147,14 +153,13 @@ class EventInput(StrictModel):
             raise ValueError("Invalid study status")
         if self.payload.arrival_at and self.payload.arrival_at.tzinfo is None:
             raise ValueError("arrival_at requires timezone")
-        if (
-            self.payload.arrival_at
-            and self.payload.arrival_at.astimezone(MSK).date() != self.occurred_at
+        if self.payload.arrival_at and not (
+            self.occurred_at <= self.payload.arrival_at.astimezone(MSK).date() <= moscow_today()
         ):
-            raise ValueError("arrival_at must match occurred_at")
-        expiry = self.payload.visa_expiry or self.payload.registration_expiry
-        if expiry and expiry < self.occurred_at:
-            raise ValueError("Document expiry must not precede issuance")
+            raise ValueError("City arrival must be on/after entry and not in the future")
+        for expiry in (self.payload.visa_expiry, self.payload.registration_expiry, self.payload.stay_expiry):
+            if expiry and expiry < self.occurred_at:
+                raise ValueError("Document expiry must not precede issuance")
         return self
 
 
@@ -211,6 +216,57 @@ class RuleDraft(StrictModel):
     checked_at: date
     effective_from: date
     evidence_note: str = Field(min_length=3, max_length=1000)
+    source_section: str = Field(default="", max_length=300)
+    source_purpose_i18n: dict[Literal["ru", "en"], str] = Field(default_factory=dict)
+    source_navigation_verified: bool = False
+
+
+ResultOutcome = Literal["requested", "submitted", "received", "partial", "completed", "question", "question_sent", "clarified"]
+
+
+class WorkflowResult(StrictModel):
+    outcome: ResultOutcome
+    occurred_at: date | None = None
+    document_expiry: date | None = None
+    checklist: list[Literal["documents", "arrival", "housing"]] = Field(default_factory=list)
+    missing_documents: list[int] = Field(default_factory=list, max_length=20)
+    external_result: bool = False
+    confirmed: Literal[True]
+    idempotency_key: str = Field(min_length=8, max_length=120)
+    supersedes_report_id: str | None = None
+
+    @model_validator(mode="after")
+    def dates_and_content(self):
+        if self.occurred_at and self.occurred_at > moscow_today():
+            raise ValueError("A reported result cannot be in the future")
+        if self.occurred_at and self.document_expiry and self.document_expiry < self.occurred_at:
+            raise ValueError("Document expiry must not precede receipt")
+        if any(i < 0 for i in self.missing_documents):
+            raise ValueError("Invalid document position")
+        return self
+
+
+class OnboardingInput(StrictModel):
+    profile: Profile
+    preparation: Literal["unknown", "not_started", "requested", "invitation_received", "visa_submitted", "visa_received"] = "unknown"
+    office_package: Literal["unknown", "not_started", "partial", "completed"] = "unknown"
+    registration: Literal["unknown", "not_started", "submitted", "received"] = "unknown"
+    confirmed: Literal[True]
+    idempotency_key: str = Field(min_length=8, max_length=120)
+
+    @model_validator(mode="after")
+    def consent_and_branch(self):
+        if not self.profile.consent or not self.profile.university_id:
+            raise ValueError("Consent and university are required")
+        if self.profile.arrival_status == "planned" and self.profile.entry_at:
+            raise ValueError("A planned first arrival cannot include a completed entry")
+        if self.preparation not in ("unknown", "not_started") and self.profile.visa_regime != "visa":
+            raise ValueError("Visa preparation requires the visa branch")
+        if self.profile.arrival_status != "arrived" and (
+            self.office_package not in ("unknown", "not_started") or self.registration not in ("unknown", "not_started")
+        ):
+            raise ValueError("Post-arrival results need an arrived context")
+        return self
 
 
 class AuthRequest(StrictModel):

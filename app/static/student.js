@@ -81,7 +81,12 @@ async function api(path, method = 'GET', body, credential = token) {
         let e = await response.json().catch(() => ({}));
         if (response.status === 401 && credential === token) {
             sessionStorage.removeItem('student_token');
-            token = null
+            token = null;
+            if(authState==='ready'||authState==='expired') {
+                authState='expired';
+                painting++;
+                renderAuthStatus();
+            }
         }
         const error = Error(typeof e.detail === 'string' ? e.detail : tr('Проверьте поля формы. Данные не сохранены.', 'Check the form fields. Data was not saved.'));
         error.status = response.status;
@@ -99,7 +104,7 @@ function guard(fn) {
             await fn(e)
         } catch (err) {
             const message = err.name === 'TimeoutError' || err instanceof TypeError ? tr('Не удалось получить ответ. Проверьте соединение и повторите попытку.', 'No response received. Check your connection and try again.') : err.message;
-            const form = b?.closest('form') || root.querySelector('#event-form,#field-form,#onboard-form');
+            const form = b?.closest('form') || root.querySelector('#event-form,#field-form,#onboard-form,#result-form');
             if (form) {
                 let error = form.querySelector('.form-error');
                 if (!error) {error = document.createElement('p'); error.className='form-error'; error.setAttribute('role','alert'); form.append(error);}
@@ -154,7 +159,7 @@ function option(value, label, selected) {
 }
 
 function field(name, label, type = 'text', value = '', extra = '') {
-    return `<label class="field">${esc(label)}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`
+    return `<label class="field">${esc(label)}<input name="${name}" type="${type}" ${type==='datetime-local'?'step="1"':''} value="${esc(value)}" ${extra}></label>`
 }
 
 function residenceOptions(selected) {
@@ -182,56 +187,13 @@ function ensureOnboardingDraft() {
     if (typeof onboardingDraft.started !== 'boolean') onboardingDraft.started = !!(
         onboardingDraft.arrival_status || onboardingDraft.visa_regime || onboardingDraft.residence_type || onboardingDraft.step > 0 || onboardingDraft.consent
     );
-    step = Math.max(0, Math.min(3, Math.floor(Number(onboardingDraft.step) || 0)));
+    if(onboardingDraft.version!==3) {onboardingDraft.version=3;onboardingDraft.step=0;}
+    step = Math.max(0, Math.min(onboardingBlocks().length-1, Math.floor(Number(onboardingDraft.step) || 0)));
     lang = onboardingDraft.language === 'en' ? 'en' : 'ru';
 }
 function persistOnboardingDraft() {
     onboardingDraft.step = step;
     sessionStorage.setItem(onboardingStorageKey(), JSON.stringify(onboardingDraft));
-}
-function renderOnboarding() {
-    ensureOnboardingDraft();
-    entryScreen = 'questions';
-    onboardingDraft.started = true;
-    persistOnboardingDraft();
-    const arrived = onboardingDraft.arrival_status === 'arrived';
-    const questions = [
-        {key:'arrival_status', icon:'plane', title:tr('Вы уже приехали в Россию?', 'Have you arrived in Russia?'), hint:tr('Начнём с того, что важно для вас сейчас.', 'Let’s start with what matters to you now.'), options:[
-            ['planned','plane',tr('Готовлюсь к приезду','Preparing to arrive'),tr('Хочу понять, что сделать до поездки','Find out what to do before the trip')],
-            ['arrived','address',tr('Я уже в России','I am already in Russia'),tr('Нужны следующие шаги после въезда','Find your next steps after arrival')]]},
-        {key:'university_id', icon:'university', title:tr('В каком вузе вы учитесь?', 'Which university is yours?'), hint:tr('У каждого вуза свой порядок и контакты.', 'Each university has its own process and contacts.'), options:[
-            ['leti','university',tr('ЛЭТИ','LETI'),tr('Электротехнический университет','Electrotechnical University')],
-            ['sutd','university','СПбГУПТД',tr('Промышленные технологии и дизайн','Industrial Technologies and Design')]]},
-        {key:'visa_regime', icon:'passport', title:arrived?tr('Как вы въехали в Россию?','How did you enter Russia?'):tr('Как вы планируете въехать?','How will you enter Russia?'), hint:tr('Если не уверены, выберите «Другое или не знаю».','If you are unsure, choose “Other or not sure”.'), options:[
-            ['visa','passport',tr('Учебная виза','Study visa'),''], ['visa_free','plane',tr('Без визы','Visa-free'),''], ['unknown','info',tr('Другое или не знаю','Other or not sure'),'']]},
-        {key:'residence_type', icon:'address', title:arrived?tr('Где вы сейчас живёте?','Where are you living?'):tr('Где планируете жить?','Where will you live?'), hint:tr('Точный адрес указывать не нужно.','You do not need to enter an exact address.'), options:[
-            ['dorm','university',tr('В общежитии','In a dormitory'),''], ['private','address',tr('В частном жилье','In private accommodation'),''], ['unknown','info',tr('Пока неизвестно','Not sure yet'),'']]}
-    ];
-    const q = questions[step];
-    history.replaceState({ryadom:true,entry:'questions',onboardingStep:step},'',location.href);
-    root.innerHTML = shell(`<section class="onboard"><div class="quiz-meta"><span>${tr('Ваш первый план','Your first roadmap')}</span><span>${tr('Вопрос','Question')} ${step+1} ${tr('из','of')} 4</span></div><div class="steps" aria-hidden="true">${[0,1,2,3].map(i=>`<span class="${i<=step?'active':''}"></span>`).join('')}</div><div class="question-icon" aria-hidden="true">${icon(q.icon,27)}</div><h1>${q.title}</h1><p class="quiz-lede">${q.hint}</p><form id="onboard-form"><fieldset class="quiz-options"><legend class="sr-only">${q.title}</legend>${q.options.map(([v,glyph,label,description])=>`<label class="quiz-option"><input type="radio" name="${q.key}" value="${v}" ${onboardingDraft[q.key]===v?'checked':''} required><span class="tile-icon">${icon(glyph,21)}</span><span class="option-copy"><strong>${label}</strong>${description?`<small>${description}</small>`:''}</span><span class="choice-dot" aria-hidden="true"></span></label>`).join('')}</fieldset>${step===3?`<label class="checkbox quiz-consent"><input type="checkbox" name="consent" required ${onboardingDraft.consent?'checked':''}><span>${tr('Согласен на хранение в этом сервисе вуза, дат и статусов процедур для построения плана. Без сканов, номеров паспортов, точного адреса и медицинских результатов. Удалить данные можно в профиле. Срок хранения после последней активности:','I agree to storage of my university, dates and procedure statuses for this roadmap. No scans, passport numbers, exact addresses or medical results. Delete data from your profile. Retention after last activity:')} ${config.privacy_retention_days} ${tr('дней.','days.')}</span></label>`:`<p class="quiz-hint">${icon('info',17)}${tr('Покажем действия для вашей ситуации.','We’ll show actions for your circumstances.')}</p>`}<div class="quiz-footer"><button class="primary wide" id="next" type="submit" ${!onboardingDraft[q.key]||(step===3&&!onboardingDraft.consent)?'disabled':''}>${step===3?tr('Открыть мой план','Open my roadmap'):tr('Продолжить','Continue')}</button><p>${tr('Ответ можно изменить, вернувшись назад.','Go back whenever you need to change an answer.')}</p></div></form></section>`);
-    wireShell();
-    const form = document.querySelector('#onboard-form');
-    form.onchange = () => {
-        onboardingDraft[q.key] = new FormData(form).get(q.key);
-        if (step===3) onboardingDraft.consent = form.elements.consent.checked;
-        persistOnboardingDraft();
-        document.querySelector('#next').disabled = !onboardingDraft[q.key] || (step===3&&!onboardingDraft.consent);
-    };
-    form.onsubmit = guard(async e => {
-        e.preventDefault();
-        if (!form.reportValidity()) return;
-        if (step<3) {step++;persistOnboardingDraft();history.pushState({ryadom:true,entry:'questions',onboardingStep:step},'',location.href);renderOnboarding();focusEntryHeading();return;}
-        const missing = questions.findIndex(question=>!onboardingDraft[question.key]);
-        if (missing>=0) {step=missing;persistOnboardingDraft();renderOnboarding();return;}
-        const next = {...profile, arrival_status:onboardingDraft.arrival_status, university_id:onboardingDraft.university_id,
-            visa_regime:onboardingDraft.visa_regime, residence_type:onboardingDraft.residence_type, language:lang, consent:true};
-        // Nullable dates stay unknown. A situation answer never records an entry event.
-        const saved = await api('/me/profile', 'PATCH', next);
-        profile = saved;
-        sessionStorage.removeItem(onboardingStorageKey());onboardingDraft=null;
-        await load();
-    });
 }
 
 function taskTiming(t) {
@@ -323,30 +285,31 @@ function taskDetailView(key) {
         document_expiry: ['Окончание документа', 'Document expiry']
     };
     const fieldName = k => fieldLabels[k] ? tr(...fieldLabels[k]) : k;
-    const statusLocked = t.engine_status !== 'actionable' || t.completion_basis === 'reported_fact';
+    const statusLocked = !!t.process || t.engine_status !== 'actionable' || t.completion_basis === 'reported_fact';
     showDetail(`<div class="eyebrow">${esc(taskCategory(t))} · ${tr('Версия', 'Version')} ${t.rule_version}</div>
         <h2>${esc(content(t.title_i18n))}</h2>
         ${t.demo_model ? `<div class="banner">${tr('Демонстрационное изменение правила. Не официальное обновление вуза.', 'Demonstration rule change. This is not an official university update.')}</div>` : ''}
         ${t.engine_status !== 'actionable' ? `<span class="tag review">${tr(...states[t.engine_status])}</span>` : ''}
-        <p class="detail-action">${esc(content(t.action_i18n))}</p>
-        <div class="detail-label">${tr('Мой статус', 'My status')}</div>${statusLocked ? `<p class="user-status ${t.user_status}">${tr(...statuses[t.user_status])}</p><p class="privacy">${lockedStatusReason(t)}</p>` : `<div class="status-control" aria-label="${tr('Мой статус', 'My status')}">${Object.entries(statuses).map(([v,s])=>`<button aria-pressed="${t.user_status===v}" data-status="${v}">${tr(...s)}</button>`).join('')}</div>`}
+        <p class="detail-action">${esc(content(t.action_i18n))}</p>${t.performer_i18n?`<p class="privacy">${esc(content(t.performer_i18n))}</p>`:''}
+        <div class="detail-label">${tr('Мой статус', 'My status')}</div>${t.process ? workflowControls(t) : statusLocked ? `<p class="user-status ${t.user_status}">${tr(...statuses[t.user_status])}</p><p class="privacy">${lockedStatusReason(t)}</p>` : `<div class="status-control" aria-label="${tr('Мой статус', 'My status')}">${Object.entries(statuses).map(([v,s])=>`<button aria-pressed="${t.user_status===v}" data-status="${v}">${tr(...s)}</button>`).join('')}</div>`}
         <section class="detail-section"><h3 class="detail-label">${tr('Сроки', 'Dates and timing')}</h3><p class="privacy">${tr('Все даты — по московскому времени.', 'All dates use Moscow time.')}</p>
         ${t.dates.length ? t.dates.map(d=>`<div class="time-row"><strong>${tr(...kinds[d.kind])} · ${d.owner==='university'?tr('Вуз','University'):d.owner==='state'?tr('Государство','State'):tr('Пользователь','User')}</strong><br>${esc(content(d.literal))}<br>${d.computed_at?`<b>${formatDate(d.computed_at)}</b>`:tr('Точная дата не рассчитана','Exact date has not been calculated')} · ${esc(unitLabel(d.unit))}<br>${esc(timingLabel(d.required_or_recommended))}</div>`).join('') : `<p class="detail-text">${tr('Отдельного числового срока у этого шага нет.', 'This task has no separate numeric deadline.')}</p>`}</section>
         <section class="detail-section"><h3 class="detail-label">${tr('Что подготовить', 'What to prepare')}</h3><ul class="detail-text">${content(t.documents_i18n).map(d=>`<li>${esc(d)}</li>`).join('')}</ul><p class="privacy">${tr('Документы в приложение загружать не нужно.', 'You do not need to upload documents here.')}</p>
-        <h3 class="detail-label">${tr('Куда обратиться', 'Where to go')}</h3><p class="detail-text">${esc(t.contact)}</p></section>
+        ${t.expected_result_i18n?`<h3 class="detail-label">${tr('Ожидаемый результат','Expected result')}</h3><p>${esc(content(t.expected_result_i18n))}</p>`:''}${t.help_i18n?`<p class="privacy">${esc(content(t.help_i18n))}</p>`:''}<h3 class="detail-label">${tr('Куда обратиться', 'Where to go')}</h3><p class="detail-text">${esc(t.contact)}</p></section>
         <details class="disclosure" ${t.missing_fields.length ? 'open' : ''}><summary>${tr('Почему это в моём плане', 'Why this is in my plan')}</summary><p class="detail-text">${esc(content(t.eligibility_reason))}</p>
         ${t.missing_fields.length ? `<p class="privacy">${tr('Что нужно уточнить', 'What needs clarification')}: ${esc(t.missing_fields.map(fieldName).join(', '))}</p><button class="secondary" id="detail-profile">${tr('Уточнить мои данные', 'Complete my information')}</button>` : ''}</details>
-        <details class="disclosure"><summary>${tr('Источники и проверка', 'Sources and verification')}</summary>${t.source_snapshot.map(s=>`<div class="source"><a href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a><br>${esc(sourceLabel(s.source_type))} · ${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</div>`).join('')}
+        <details class="disclosure"><summary>${tr('Источники и проверка', 'Sources and verification')}</summary>${t.source_snapshot.map(s=>`<div class="source"><a href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>${s.section_label?`<p>${tr('Где искать','Where to look')}: ${esc(s.section_label)}</p>`:''}${s.purpose_i18n?`<p>${esc(content(s.purpose_i18n))}</p>`:''}<br>${esc(sourceLabel(s.source_type))} · ${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</div>`).join('')}
         <p class="privacy">${tr('Подтверждение нормы', 'Norm verification')}: ${esc(confidenceLabel(t.norm_confidence))}<br>${tr('Применимость к вам', 'Applicability to you')}: ${esc(confidenceLabel(t.eligibility_confidence))}<br>${tr('Формула срока', 'Timing formula')}: ${esc(confidenceLabel(t.formula_confidence))}</p></details>
         ${!statusLocked && t.user_status !== 'completed' ? `<button class="primary wide" data-status="completed">${t.family === 'M07' ? tr('Отметить, что передал(а) документы', 'Mark documents as submitted') : tr('Отметить как выполненное', 'Mark as completed')}</button>` : ''}
         ${t.completion_basis === 'reported_fact' || t.engine_status === 'superseded' ? `<button class="secondary wide" id="detail-history">${tr('Открыть историю','Open history')}</button>` : ''}
         ${!statusLocked && t.user_status === 'completed' && RoadmapView.hero(plan.tasks) ? `<button class="primary wide" id="detail-next">${tr('Следующее действие','Next action')}</button>` : ''}
         ${t.engine_status === 'requires_recheck' ? `<button class="primary wide" id="detail-confirm-event">${tr('Сообщить новое подтверждение', 'Record new confirmation')}</button>` : ''}
-        <p class="privacy">${tr('«Выполнено» — ваша отметка о действии. Получение нового документа сообщите отдельным событием.', '“Completed” is your report of an action. Record a newly issued document as a separate event.')}</p>`);
+        <p class="privacy">${t.process?tr('Результат сообщён вами; сервис не проверяет документ. Подача и получение сохраняются отдельно.','Results are self-reported; the service does not verify documents. Submission and receipt are recorded separately.'):tr('«Выполнено» — ваша отметка о действии. Получение нового документа сообщите отдельным событием.', '“Completed” is your report of an action. Record a newly issued document as a separate event.')}</p>`);
     document.querySelector('#detail-history')?.addEventListener('click',()=>navigate({name:'history'}));
     document.querySelector('#detail-next')?.addEventListener('click',()=>taskDetail(RoadmapView.hero(plan.tasks).task_key));
     document.querySelector('#detail-confirm-event')?.addEventListener('click', () => eventForm(t.family==='M04'||t.family==='M08'?'registration_confirmed':t.family==='M07'?'visa_issued':'address_changed'));
-    document.querySelector('#detail-profile')?.addEventListener('click', () => { modal.close(); renderProfile(); });
+    document.querySelector('#detail-profile')?.addEventListener('click', () => resolveTask(t));
+    wireWorkflow(t);
     document.querySelectorAll('[data-status]').forEach(b => b.onclick = guard(async () => {
         await api('/me/tasks/' + encodeURIComponent(key) + '/status', 'PATCH', {status: b.dataset.status});
         plan = await api('/me/roadmap');
@@ -390,6 +353,8 @@ function eventFormView(type, original = null, candidateId = null) {
             ['visa', tr('По визе', 'Visa')],
             ['visa_free', tr('Безвизовый', 'Visa-free')]
         ], payload.visa_regime || effective.visa_regime)
+        const arrival = payload.arrival_at ? new Date(new Date(payload.arrival_at).getTime()+3*60*60*1000).toISOString().slice(0,19) : '';
+        fields += field('arrival_at',tr('Время прибытия (МСК, если известно)','Arrival time (MSK, if known)'),'datetime-local',arrival,'step="1"');
     }
     if (['entry_recorded', 'reentry_recorded', 'address_changed', 'registration_confirmed'].includes(type)) {
         const residence = payload.residence_type || effective.residence_type;
@@ -397,6 +362,7 @@ function eventFormView(type, original = null, candidateId = null) {
     }
     if (type === 'visa_issued') fields += field('visa_expiry', tr('Окончание новой визы', 'New visa expiry'), 'date', payload.visa_expiry || '', 'required');
     if (type === 'registration_confirmed') fields += field('registration_expiry', tr('Окончание новой регистрации', 'New registration expiry'), 'date', payload.registration_expiry || '', 'required');
+    if (type === 'registration_confirmed') fields += field('stay_expiry', tr('Окончание пребывания (если известно)', 'Permitted stay expiry (if known)'), 'date', payload.stay_expiry || '');
     if (type === 'status_changed') fields += selectField('status', tr('Новое основание', 'New grounds'), [
         ['unknown', tr('Не знаю', 'Not sure')],
         ['study', tr('Учёба', 'Study')],
@@ -405,6 +371,7 @@ function eventFormView(type, original = null, candidateId = null) {
         ['residence_permit', 'ВНЖ']
     ], payload.status || 'unknown');
     if (type === 'enrolment_changed') fields += selectField('status', tr('Новый учебный статус', 'New study status'), [
+        ['admitted', tr('Зачислен(а), занятия ещё не начались', 'Admitted, classes not started')],
         ['active', tr('Учусь', 'Active')],
         ['leave', tr('Академический отпуск', 'Leave')],
         ['transferred', tr('Перевод', 'Transfer')],
@@ -426,6 +393,8 @@ function eventFormView(type, original = null, candidateId = null) {
         };
         delete p.type;
         delete p.occurred_at;
+        if('arrival_at' in p) {if(p.arrival_at)p.arrival_at += (p.arrival_at.length===16?':00':'')+'+03:00';else delete p.arrival_at;}
+        if('stay_expiry' in p && !p.stay_expiry)delete p.stay_expiry;
         if (type === 'address_changed') p.from_residence_type = payload.from_residence_type || effective.residence_type || 'unknown';
         let body = {
             type,
@@ -466,6 +435,8 @@ function eventFormView(type, original = null, candidateId = null) {
     }))
 }
 function reasonLabel(r) {
+    const resultReasons={onboarding_confirmed:['Начальные сведения подтверждены','Initial information confirmed'],result_reported:['Результат сохранён','Result saved'],result_corrected:['Результат исправлен','Result corrected'],result_retracted:['Результат отменён','Result retracted']};
+    if(resultReasons[r])return tr(...resultReasons[r]);
     return r in eventNames ? tr(...eventNames[r]) : ({
         profile_updated: tr('Уточнение данных', 'Profile updated'),
         event_corrected: tr('Исправление события', 'Event corrected'),
@@ -482,6 +453,7 @@ async function start() {
     const outer = new URLSearchParams(location.hash.slice(1));
     let init = window.WebApp?.initData || outer.get('WebAppData');
     if (init) {
+        const previousToken=token, previousScope=onboardingScope;
         const auth = await api('/auth/max', 'POST', {
             init_data: init
         });
@@ -490,6 +462,7 @@ async function start() {
         // A stable scope keeps the session draft when MAX rotates its bearer token.
         const signedUser = JSON.parse(new URLSearchParams(init).get('user') || '{}');
         onboardingScope = signedUser.id != null ? 'max_' + signedUser.id : null;
+        if(previousScope && previousScope===onboardingScope)migrateFormDrafts(previousToken);
         if (onboardingScope) sessionStorage.setItem('ryadom_onboarding_scope_' + token, onboardingScope);
         sessionStorage.setItem('student_token', token);
         window.WebApp?.ready?.()

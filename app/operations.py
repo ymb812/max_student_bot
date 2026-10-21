@@ -18,6 +18,8 @@ REQUIRED_TABLES = {
     "inbox",
     "candidates",
     "metadata",
+    "workflow_reports",
+    "onboarding_receipts",
 }
 
 

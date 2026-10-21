@@ -390,7 +390,8 @@ def seed_rules():
                     "After a hotel stay, passport replacement or status change, check the procedure with the office. Prior registration is not automatically declared void.",
                 )
             result.append(body)
-    return result
+    from app.adaptive_catalog import adaptive_rules
+    return adaptive_rules(result)
 
 
 def seed(db):

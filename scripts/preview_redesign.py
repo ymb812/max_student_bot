@@ -8,8 +8,14 @@ from app.config import Settings
 from app.main import create_app
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=8010)
+    parser.add_argument('--database', default='.local/ryadom-ui-acceptance.sqlite3')
+    args = parser.parse_args()
     uvicorn.run(create_app(Settings(
-        _env_file=None, database_path='.local/ryadom-ui-acceptance.sqlite3',
+        _env_file=None, database_path=args.database,
         demo_mode=True, bot_transport='disabled', max_bot_token='',
-        public_base_url='http://127.0.0.1:8010',
-    )), host='127.0.0.1', port=8010)
+        editor_sutd_key='local-ui-sutd', editor_leti_key='local-ui-leti',
+        public_base_url=f'http://127.0.0.1:{args.port}',
+    )), host='127.0.0.1', port=args.port)

@@ -49,13 +49,16 @@ const sizes=[{width:320,height:640},{width:390,height:844},{width:430,height:932
         for(const language of ['ru','en']){await page.locator(`[data-language=${language}]`).click();await inspect('welcome-'+language);}
         const welcomeFrame=screens.find(s=>s.name==='welcome-ru'&&s.width===1920).frame;
         await page.locator('#start-plan').click();
-        const answers=['arrived','sutd','visa','dorm'];
-        for(let i=0;i<4;i++){
+        for(let i=0;i<5;i++){
             for(const language of ['ru','en']){await page.locator(`[data-language=${language}]`).click();await inspect('question-'+(i+1)+'-'+language);}
-            if(i===0){const q=screens.find(s=>s.name==='question-1-ru'&&s.width===1920).frame;assert.deepEqual(q,welcomeFrame,'welcome and first question must use the same desktop frame');}
-            await page.locator(`[value=${answers[i]}]`).check();if(i<3)await page.locator('#next').click();
+            if(i===0){await page.locator('[name=arrival_status][value=arrived]').check();await page.locator('[name=university_id]').selectOption('sutd');}
+            if(i===1){for(const name of ['age_band','study_status','migration_basis'])await page.locator('[name='+name+']').selectOption('unknown');}
+            if(i===2){await page.locator('[name=visa_regime]').selectOption('visa');await page.locator('[name=entry_at_unknown]').check();await page.locator('[name=entry_purpose]').selectOption('unknown');await page.locator('[name=residence_type]').selectOption('dorm');}
+            if(i===3){await page.locator('[name=office_package]').selectOption('unknown');await page.locator('[name=registration]').selectOption('unknown');await page.locator('[name=visa_expiry_unknown]').check();}
+            if(i===4)await page.locator('[name=consent]').check();
+            await page.locator('#next').click();
         }
-        await page.locator('[name=consent]').check();await page.locator('#next').click();await page.locator('#context-profile').waitFor();
+        await page.locator('#context-profile').waitFor();
         const conditional=await page.evaluate(()=>plan.tasks.find(t=>t.engine_status==='conditional'&&t.missing_fields?.length&&t.missing_fields.every(k=>editableFields().includes(k)))?.task_key);
         assert.ok(conditional,'partial profile must offer a real clarification');
         await view({name:'clarifications'},'partial-clarifications');await view({name:'clarify',key:conditional},'clarification-sheet');
@@ -69,7 +72,7 @@ const sizes=[{width:320,height:640},{width:390,height:844},{width:430,height:932
         for(const [next,name] of [
             [{name:'plan'},'plan'],[{name:'stages'},'stages'],
             ...['before','arrival','study'].map(stage=>[{name:'stage',stage},'stage-'+stage]),
-            [{name:'task',key:keys.task},'task'],[{name:'clarifications'},'clarifications'],
+            [{name:'task',key:keys.task},'task'],[{name:'workflow',key:keys.task,outcome:'submitted'},'workflow-result'],[{name:'clarifications'},'clarifications'],
             [{name:'review',key:keys.review},'review'],[{name:'events'},'events'],
             ...eventTypes.map(type=>[{name:'event',type},'event-'+type]),
             [{name:'result',revision:keys.revision},'result'],[{name:'history'},'history'],

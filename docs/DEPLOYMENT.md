@@ -1,6 +1,8 @@
 # Постоянное развёртывание
 
-Обновлено 19.10.2026. Рабочая директория проекта на сервере — `/opt/max`.
+21.10.2026: адаптивный маршрут опубликован по запросу пользователя на https://max.market-kit.ru. Релиз `adaptive-20261021T143027Z`; app healthy, HTTPS/API и браузерные проверки прошли. Подробности и откат — в последнем разделе. Настоящий MAX mobile/web этой версии отдельно не проверялся.
+
+Обновлено 21.10.2026. Рабочая директория проекта на сервере — `/opt/max`.
 
 - Приложение: https://max.market-kit.ru
 - Админка: https://max.market-kit.ru/admin
@@ -107,3 +109,33 @@ PUBLIC_BASE_URL установлен в `https://max.market-kit.ru`; OpenAPI ser
 На публичном HTTPS прошел `UI_BASE_URL=https://max.market-kit.ru node scripts/check_student_layout.cjs`: 448 RU/EN проверок на 320/390/430/768/1280/1920/2560 px, все 12 event forms, совпадение frame приветствия/вопроса, полный фон, tabs/dialogs, scroll, targets и контраст. Собственный synthetic-профиль удален. Публичные HTML и все подключенные student/admin assets побайтно совпали с локальными, health/polling/API schema/auth isolation/profile/deletion исправны, основной https://market-kit.ru вернул 200. Снимки и отчет — `output/layout-deployed/`.
 
 Локально прошли четыре browser scripts, 38 backend-тестов, 6 presentation-тестов и JS syntax. Реальный MAX на телефоне для этой версии отдельно не проверен. Откат — восстановить только файлы по манифесту, удалить только новые файлы с `old_sha256=null`, затем пересобрать app; базу автоматически не подменять. Коммит агент не создавал.
+
+
+## Полное ревью и исправления — 20.10.2026
+
+Релиз `review-20261019T231306Z` (20 октября по Москве) опубликован на https://max.market-kit.ru. Cache version: `20261020-review1`. Состав исправлений и локальные проверки — `PROJECT_REVIEW_2026_10_20.md`.
+
+До выкладки создан и проверен SQLite snapshot `/app/data/backups/release-review-20261019T231306Z.sqlite3` (integrity ok). Прежний образ отмечен `max-students-app:pre-review-20261019T231306Z`; прежние файлы и SHA256-манифест сохранены в `/opt/max/private-rollback/review-20261019T231306Z` (0700). Preflight сверил runtime с предыдущими Git/deployment версиями; расхождений вне текущей работы нет. Дополнительная совместимость со старым History API/form draft включена в тот же релиз и манифест.
+
+Пересобран только `app`: `docker compose -f docker-compose.yml -f scripts/tunnel-compose.yml up -d --build --no-deps app`. Образ собран с кэшированными зависимостями менее чем за 5 минут. `.env` побайтно сохранен, SQLite volume прежний; ID всех остальных работающих контейнеров, включая Caddy и tunnel, не изменились. App healthy, транспорт polling.
+
+Публичная проверка подтвердила HTTPS/TLS, health, точное соответствие HTML и семи подключенных assets локальным файлам, no-cache, прежнюю OpenAPI-схему (23 пути), auth isolation, safe unknown, идемпотентность события, correction/retraction/owned revision, сохранение optional timestamp, отказ от некорректного stay_expiry и удаление synthetic-профиля с отзывом сессии. Основной market-kit.ru отвечает 200. Настоящие пользовательские события и модельные правила на публичном сервере для ревью не создавались: проверки работают на своих browser-demo профилях без MAX identity.
+
+Локально: 48 pytest, 6 presentation tests, пять browser scripts. Публично: welcome RU/EN и responsive layout проверены повторно; отчеты в `.local/review-public-verification.json`, `output/review-deployed/`. Все профили этих публичных проверок удаляются. Телефон/MAX WebView и реальные сообщения этой версии отдельно не проверялись.
+
+Откат: восстановить только файлы из manifest указанной приватной директории и пересобрать app (или использовать сохраненный image). Новые файлы перечислены с `old_sha256=null`. Базу автоматически не подменять: после snapshot возможны новые записи. Другие сервисы не требуют отката. Коммит не создавался.
+
+
+## Адаптивный маршрут — 21.10.2026
+
+Релиз `adaptive-20261021T143027Z` опубликован по явному запросу пользователя. Cache version student assets — `20261021-adaptive1`. Preflight подтвердил соответствие runtime предыдущей выкладке/Git baseline. Внутри `/opt/max` адресно заменены 36 отличающихся файлов по SHA256-манифесту. Прототип и developer-package не передавались; compose, env и постоянный volume сохранены.
+
+Перед заменой создан и проверен согласованный SQLite snapshot `/app/data/backups/release-adaptive-20261021T143027Z.sqlite3` (integrity ok). Копии исходных файлов и манифест — `/opt/max/private-rollback/adaptive-20261021T143027Z` (0700), прежний image — `max-students-app:pre-adaptive-20261021T143027Z`. Пересобран только app с `up -d --build --no-deps app`; идентификаторы всех остальных запущенных контейнеров, включая Caddy и tunnel, совпали до/после. `.env` побайтно сохранён. При старте additive migration создала workflow_reports/onboarding_receipts; seed добавил версии правил без изменения прежних snapshots.
+
+Публичная API-проверка обнаружила крайний случай: событие въезда без arrival_at перекрывало последующее точечное уточнение времени прибытия ЛЭТИ. Исправлено в этом же релизе: сервер привязывает уточнение через Profile.arrival_at_episode_id к текущему entry episode. Оно не наследуется новым въездом, а дата раньше фактического въезда отвергается. Повторно обновлены engine/main/models, OpenAPI и regression test; manifest содержит окончательные хеши, исходные rollback-файлы сохранены. После исправления 75 backend tests прошли.
+
+Проверены доверенный HTTPS, health/polling, точное совпадение публичных HTML и всех подключённых student/admin assets с локальными файлами, no-cache, 27 API paths, auth isolation, полный API-путь обоих вузов (onboarding/replay, приглашение, виза, поездка, фактический въезд, частичный комплект, ожидание/получение регистрации, уточнение expiry). Созданы только собственные demo-профили без MAX ID; после проверки они удалены, сессии отозваны. Основной https://market-kit.ru отвечает 200.
+
+Публичные browser checks: adaptive flow (включая потерянный ответ/retry, cancel без записи, поздний LETI, targeted fields), welcome/auth/drafts/Back и 476 RU/EN layout checks на 320–2560 px прошли. MAX auth/Back в welcome — модельные; реальный MAX WebView и доставка этой версии не заявлены. Артефакты: `.local/adaptive-deployment.json`, `.local/adaptive-public-verification.json`, `output/adaptive-deployed/`, `output/adaptive-welcome-deployed/`, `output/adaptive-layout-deployed/report.json`. Это приватные/генерируемые локальные файлы, без включения в source archive.
+
+Откат: сначала проверить текущие хеши по manifest и совместимость каталога/результатов на изолированной копии. Восстанавливать только перечисленные файлы в `/opt/max`; новые файлы отмечены old_sha256=null. Предыдущий image сохранён. Откат кода сам по себе не отменяет новые версии правил и workflow results. Базу автоматически не подменять: после snapshot возможны пользовательские записи. Предрелизный snapshot со старой схемой проверять прежним image/CLI либо на дополнительной изолированной копии после additive migration. Соседние сервисы не требуют отката. Коммит не создавался.

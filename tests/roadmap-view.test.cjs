@@ -45,3 +45,15 @@ test('manual completion selects the next actual task and can be undone in an ear
     assert.equal(view.progress(tasks,'before').done,false);
     assert.equal(view.hero(tasks).task_key,'border');
 });
+test('server priority is shared by hero and future work cannot falsely complete a stage',()=>{
+    const tasks=[task('future',{availability:'future',priority_rank:0,presentation_stage:'before'}),task('done',{user_status:'completed',presentation_stage:'before'}),task('renewal',{family:'M07',priority_rank:1}),task('office',{priority_rank:2})];
+    assert.equal(view.hero(tasks).task_key,'renewal');
+    assert.equal(view.progress(tasks,'before').done,false);
+});
+test('open medical review stays visible after arrival tasks and does not block study context',()=>{
+    const tasks=['entry_context','documents','office','registration'].map(process=>task(process,{process,presentation_stage:'arrival',user_status:'completed'}));
+    tasks.push(task('medical',{process:'consultation',presentation_stage:'arrival',engine_status:'needs_review'}));
+    assert.equal(view.currentStage(tasks,{entry_at:'2026-10-01'}),'study');
+    assert.equal(view.progress(tasks,'arrival').done,false);
+    assert.equal(view.clarifications(tasks)[0].task_key,'medical');
+});

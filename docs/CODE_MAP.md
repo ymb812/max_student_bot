@@ -1,6 +1,6 @@
 # Карта кода «Рядом»
 
-Обновлено 18.10.2026. Продуктовый source of truth — MASTER FINAL в этой директории.
+Обновлено 21.10.2026. Продуктовый source of truth — MASTER FINAL и принятое пользователем дополнение `developer-package-2026-10-21/`. Текущий контракт/приёмка: `ADAPTIVE_ROUTE_2026_10_21.md`. Предыдущие отчёты ниже описывают свои версии.
 
 Мобильный интерфейс от 18.10.2026, требования, соответствие исходному прототипу, проверки и снимки: `ACTIVATION_V3_IMPLEMENTATION_2026_10_18.md`. Визуальное оформление и короткий onboarding обновлены; полный каталог и правила сохранены. Декоративные текстовые стрелки убраны из student/admin UI, навигационные SVG-иконки сохранены.
 
@@ -14,12 +14,14 @@
 | `app/static/demo-profiles.js`, `demo-profiles.json` | Синтетические входные данные и независимые сессии пресетов в браузерном демо; обычные API и rules engine, исходный профиль сохраняется. |
 | `docker-compose.yml`, `deploy/Caddyfile.max` | Опциональная изолированная сеть app/proxy и отдельный host block max.market-kit.ru, без новых публичных портов. |
 | `tests/test_demo_profiles.py` | Фактические fixtures: локальные рекомендации, безопасные unknown и независимость статусов. |
-| `app/timeutil.py` | Московская календарная дата для движка, валидации и reminders. |
-| `app/models.py` | Строгие входные схемы профиля, событий, кандидатов и локальных правил. Необязательный `arrival_status=planned/arrived/unknown` — контекст интерфейса, без факта въезда и влияния на правила. Запрет лишних полей/медицинских результатов. |
+| `app/timeutil.py` | Московская дата; рабочие дни только по переданному проверенному календарю с полной областью дат, включая переносы. Производственный календарь не встроен. |
+| `app/models.py` | Строгие Profile, EventInput, OnboardingInput и WorkflowResult. `admitted` отдельно от `active`; `arrival_status` выбирает контекст/доступность без выдуманного события; city arrival отдельно от въезда; серверный arrival_at_episode_id привязывает уточнение к конкретному entry episode. |
+| `app/adaptive_catalog.py` | Декомпозиция M01, entry context M02, контент RU/EN, точные разделы источников и три явных demo overrides единиц времени. |
+| `app/workflow.py` | Чистая проекция журнала результатов, зависимости/циклы, availability/workflow_status/result_actions, stage и единый серверный ранг Hero. |
 | `app/catalog.py` | Источники и версионированный каталог M01–M10 двух вузов. При обновлении seed создаётся новая версия, старый snapshot сохраняется. |
 | `app/engine.py` | Чистый reducer подтверждённых событий, support envelope, три состояния применимости, эпизоды/циклы, дедупликация действий, отдельные временные значения. Неизвестная цель первичного въезда не перекрывает последующее уточнение профиля; новый въезд с неизвестной целью снова требует уточнения. M09 оркестрирует, отдельная карточка только для уникального review. |
-| `app/db.py` | SQLite/WAL, схема, транзакции BEGIN IMMEDIATE. Один процесс приложения. |
-| `app/service.py` | Пересчёт, стабильные task keys, diff/history, идемпотентная запись событий, валидация и preview публикации, outbox. |
+| `app/db.py` | SQLite/WAL, BEGIN IMMEDIATE, additive таблицы workflow_reports/onboarding_receipts. Один процесс приложения. |
+| `app/service.py` | Пересчёт, стабильные task keys, diff/history; атомарный onboarding и идемпотентные результаты; коррекция/отмена, версия/preview/outbox. |
 | `app/operations.py` | Приватный согласованный снимок SQLite, integrity/schema verification; никогда не перезаписывает живую базу. |
 | `app/auth.py` | HMAC-SHA256 MAX initData, запрет повторных ключей, часовой срок подписи, проверенный MAX ID. |
 | `app/main.py` | API, роли и tenant isolation, immutable publish, отмена/исправление, статусы, профиль и удаление; no-store API и ревалидация HTML/static. |
@@ -27,16 +29,20 @@
 | `app/max_client.py` | Bot API, проверенный TLS, durable inbox/outbox, polling или webhook, retries, reminders и retention. |
 | `app/certs/` | Публичный сертификат Минцифры, используется только клиентом MAX. |
 | `app/language.py` | RU/EN определение языка и предложение типа события. Optional OpenAI-compatible classifier, безопасный локальный fallback. Ни одного изменения плана из ответа LLM. |
-| `app/static/student.js` | Auth/API, явный started и scoped session draft (для проверенного MAX — стабильный scope при смене токена), RU/EN без потери черновика, четыре вопроса (ситуация/вуз/въезд/жильё) → План, полное согласие, typed event forms, task detail и следующее реальное действие, status save, recovery по idempotency key. |
+| `app/static/student.js` | Auth/API, scoped session draft v3 и миграция старых ответов, RU/EN, typed event forms, task detail с источниками/помощью и результатами; recovery по idempotency key. |
+| `app/static/adaptive-ui.js` | Адаптивные блоки onboarding и сводка; формы конкретного результата/исправления, чек-лист поездки, остаток комплекта, ожидание и адресное уточнение. Формы не вычисляют применимость. |
 | `app/static/student-ui.js` | Приветствие со статичным примером и CTA, auth loading/error/retry, маршрутизация нового/начатого/готового входа; 16 основных экранов, History API/Back/MAX BackButton, восстановление URL после reload, origin/scroll, Hero/stages, уточнения (все `missing_fields` пункта в одной форме и одном PATCH), profile sheets/dirty guard, persisted revision diff и история. |
 | `app/static/roadmap-view.js` | Чистая presentation-логика: M07/M08 → study, выбор Hero независимо от этапа, семантическая дедупликация, прогресс, distinct уточнения. Никакой правовой арифметики. |
 | `app/static/student-ui.css`, `ryadom-logo.svg` | Student-only система activation-v3, общий responsive frame (desktop/mobile), читаемый hover Hero CTA и scoped welcome по прототипу 19.10: синий Hero, голубые карточки, общий timeline с синими completed/current маркерами, нижние вкладки, RU/EN, sheets, safe-area и 320px. |
-| `scripts/check_student_layout.cjs` | 448 RU/EN проверок responsive-геометрии на 320–2560 px: welcome/4 вопроса, план/этапы/задачи, все 12 event forms, diff/history/profile/editors; общий desktop frame, body background, tabs/dialogs, 44 px controls и Hero hover contrast. Реальный API, свой synthetic-профиль удаляется. Отчет — `UI_SCALE_REVIEW_2026_10_19.md`. |
+| `scripts/check_student_layout.cjs` | 476 RU/EN проверок на 320–2560 px: welcome/5 блоков arrived onboarding, план/этапы/задачи/результаты, все 12 event forms, diff/history/profile/editors; 44 px, frame, tabs/dialogs и hover contrast. `LAYOUT_OUTPUT` задаёт папку снимков. |
+| `scripts/check_adaptive_ui.cjs`, `tests/test_adaptive_route.py` | Новый маршрут обоих вузов, поздний вход, неизвестные даты, частичный комплект/ожидание/получение, циклы, исправление/отмена, lost response/rollback/replay, старая M01, рестарт, серверный Hero и рабочие дни. |
 | `scripts/check_welcome_ui.cjs` | Первый вход, старый/новый session draft, Back/Forward/MAX Back, RU/EN и согласие, готовый профиль/query/MAX task target без welcome, auth loading/error/retry и смена MAX bearer token (модельные auth responses), 320/360/390/430 px, reduced motion. Реальный API на собственных синтетических профилях; они удаляются. `UI_BASE_URL` задает сервер. |
 | `tests/roadmap-view.test.cjs` | Инварианты Hero, этапов и прогресса, включая completed+recheck. |
 | `tests/test_ui_revisions.py` | Собственность/replay ревизий, persisted empty diff. |
-| `scripts/preview_redesign.py`, `scripts/check_student_ui.cjs`, `scripts/check_activation_ui.cjs` | Изолированный локальный сервер без MAX и два браузерных сценария: полный путь, поздний вход/complete/undo/следующий Hero, origin после reload, черновики RU/EN/reload, recheck/read-only, загрузка/ошибка/повтор, удаление, ширины 320/360/390 и 44px. Снимки — `output/activation-v3/`. |
-| `tests/test_activation_profile.py` | Сохранение ситуации и согласия без даты/события, отсутствие влияния на задачи и решения, совместимость старого клиента и валидация enum. |
+| `scripts/preview_redesign.py` | Изолированный local API без MAX, параметры `--port` и `--database`; defaults сохранены. |
+| `scripts/check_student_ui.cjs`, `scripts/check_activation_ui.cjs` | Исторические сценарии четырёх вопросов 18.10; для текущего onboarding использовать check_adaptive_ui/check_welcome_ui. Не являются текущей приёмкой. |
+| `tests/test_activation_profile.py` | Ситуация/согласие без выдуманной даты/события; смена контекста влияет на доступность, старый API совместим; enum validation. |
+| `scripts/check_review_ui.cjs`, `tests/test_review_regressions.py` | Регрессии полного ревью: публикация/редактирование составного правила в обоих tenant, diff контактов/документов RU/EN, исправление optional event fields, MAX draft rotation/account isolation, legacy drafts, истечение сессии; неправильный LLM JSON, актуальность отложенных reminders, stay expiry/config. Только synthetic local данные. |
 | `app/static/admin.js` | Модельная роль редактора, draft/version, validation, affected preview, publish/archive, доставка; общий SVG-логотип без текстовых декоративных стрелок. |
 | `app/static/style.css` | Общий светлый адаптивный student/admin UI: список задач, нижняя навигация, мобильные диалоги, формы и таблицы; без сборки и внешних шрифтов. |
 | `tests/` | Интеграционные проверки движка, API, ролей, публикаций, подписи MAX, повторов и отмены фактов. |
@@ -90,4 +96,6 @@ API проверяет владение student-данными и tenant ред�
 
 Операционные документы: `OPERATIONS.md` — backup и независимое восстановление; `MAX_TEST_GUIDE.md` — HTTPS и настоящая MAX проверка; `MAX_ACCEPTANCE_2026_09_28.md` — публикационный push и архивирование тестового правила; `PRESENTATION_CONTENT.md` — публичная/закрытая презентации и состав MarketKit; `SUBMISSION_STEPS.md` — конкретные действия капитана по вычитке и подаче.
 
-Приветствие и актуальный вход 19.10.2026: `WELCOME_IMPLEMENTATION_2026_10_19.md`. Пример маршрута из `welcome/` не вызывает engine/API и не меняет прогресс. `welcome/` — входной прототип, runtime от него не зависит.
+Приветствие и актуальный вход 19.10.2026: `WELCOME_IMPLEMENTATION_2026_10_19.md`. Пример маршрута не вызывает engine/API и не меняет прогресс. Исходный `welcome/` убран из проекта 20.10; локальная копия сохранена в игнорируемом `.local/welcome-reference-2026-10-20/`. Требования полностью перенесены в docs.
+
+Ревью 20.10: `student-ui.js` хранит формы v2 по именам полей и scope проверенной личности, изолирует History API между пользователями, показывает полный diff и путь перевода вуза. `student.js` сохраняет optional `arrival_at`/`stay_expiry` при исправлениях и дает повторный вход после 401. `admin.js` сохраняет дополнительные сроки/триггеры и поддерживает разовую дату. `max_client.py` перепроверяет queued reminder перед отправкой; `language.py` отбрасывает не-объектный LLM JSON. Подробности и границы — `PROJECT_REVIEW_2026_10_20.md`.

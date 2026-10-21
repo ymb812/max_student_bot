@@ -42,6 +42,16 @@ class Database:
             CREATE TABLE IF NOT EXISTS candidates(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,
                 body TEXT NOT NULL,expires_at INTEGER NOT NULL,confirmed_event_id TEXT);
             CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS workflow_reports(id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
+                task_key TEXT NOT NULL, process TEXT NOT NULL, episode_id TEXT NOT NULL,
+                cycle_id TEXT NOT NULL, outcome TEXT NOT NULL, occurred_at TEXT,
+                recorded_at TEXT NOT NULL, body TEXT NOT NULL, dependencies TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL, supersedes_report_id TEXT, retracted_at TEXT,
+                UNIQUE(user_id,idempotency_key));
+            CREATE TABLE IF NOT EXISTS onboarding_receipts(user_id TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL, body TEXT NOT NULL, revision_id TEXT,
+                PRIMARY KEY(user_id,idempotency_key));
+            CREATE INDEX IF NOT EXISTS workflow_user ON workflow_reports(user_id);
             CREATE INDEX IF NOT EXISTS events_user ON events(user_id);
             CREATE INDEX IF NOT EXISTS tasks_user ON tasks(user_id);
             CREATE INDEX IF NOT EXISTS revisions_user ON revisions(user_id);

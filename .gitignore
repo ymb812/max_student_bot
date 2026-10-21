@@ -19,3 +19,6 @@ output/
 
 # Original UI prototype is archived outside this project.
 /activation-v3/
+
+# Integrated welcome assets live in app/static; source reference is archived locally.
+/welcome/

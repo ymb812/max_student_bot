@@ -3,14 +3,15 @@
 from copy import deepcopy
 from datetime import date, timedelta
 from app.catalog import i18n
-from app.timeutil import moscow_today
+from app.timeutil import moscow_today, working_date
+from app.workflow import project_reports, shape_task
 
 
 def reduce_events(profile, events):
     facts = deepcopy(profile)
     facts["_entry_episode"] = "initial-entry"
     facts["_residence_episode"] = (
-        "initial-entry" if profile.get("entry_at") else "initial-residence"
+        "initial-entry" if profile.get("entry_at") or profile.get("arrival_status") == "arrived" else "initial-residence"
     )
     facts["_visa_cycle"] = profile.get("visa_expiry") or "unknown"
     facts["_registration_cycle"] = profile.get("registration_expiry") or "unknown"
@@ -44,7 +45,9 @@ def reduce_events(profile, events):
                 entry_facts.pop("entry_purpose")
             facts.update(entry_facts)
             facts["entry_at"] = event["occurred_at"]
-            facts["arrival_at"] = payload.get("arrival_at")
+            facts["arrival_at"] = (
+                profile.get("arrival_at") if profile.get("arrival_at_episode_id") == eid else payload.get("arrival_at")
+            )
             facts["_entry_episode"] = facts["_residence_episode"] = eid
             facts["_residence_anchor"] = event["occurred_at"]
             facts["_registration_confirmed"] = False
@@ -58,10 +61,12 @@ def reduce_events(profile, events):
             facts["registration_expiry"] = None
             facts["_registration_cycle"] = "unknown"
         elif typ == "visa_issued":
+            facts["_visa_issued_event"] = eid
             facts["visa_expiry"] = payload["visa_expiry"]
             facts["visa_regime"] = "visa"
             facts["_visa_cycle"] = eid
         elif typ == "registration_confirmed":
+            facts["_registration_issued_event"] = eid
             facts["residence_type"] = payload["residence_type"]
             facts["registration_expiry"] = payload["registration_expiry"]
             if payload.get("stay_expiry"):
@@ -96,7 +101,7 @@ def support_status(f):
         f.get("age_band") == "minor"
         or f.get("campus_id") != "main"
         or f.get("migration_basis") not in ("study", "unknown")
-        or f.get("study_status") not in ("active", "unknown")
+        or f.get("study_status") not in ("admitted", "active", "unknown")
     ):
         return "needs_review", ["support_envelope"]
     missing = [
@@ -123,7 +128,7 @@ def legal_status(f, biometric=False):
     return "needs_review", ["country_exemptions_and_legal_applicability"]
 
 
-def temporal(spec, facts, rule, allow, now):
+def temporal(spec, facts, rule, allow, now, calendar=None):
     value = deepcopy(spec)
     value.update(
         timezone="Europe/Moscow",
@@ -147,12 +152,17 @@ def temporal(spec, facts, rule, allow, now):
         ).isoformat()
     if allow and spec.get("absolute_date") and spec["kind"] != "legal_deadline":
         value["computed_at"] = spec["absolute_date"]
+    if allow and spec["kind"] != "legal_deadline" and spec["unit"] == "working" and anchor and spec.get("offset") is not None:
+        value["computed_at"] = working_date(anchor, spec["offset"], calendar)
+        if value["computed_at"]:
+            value["calendar_version"] = calendar["version"]
     return value
 
 
-def build_roadmap(user_id, profile, events, rules, now=None):
+def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calendar=None):
     today = now or moscow_today()
-    f = reduce_events(profile, events)
+    f = project_reports(reduce_events(profile, events), reports or [])
+    arrived = bool(f.get("entry_at")) or f.get("arrival_status") == "arrived"
     tasks, decisions = [], []
     if not f.get("university_id") or not f.get("consent"):
         return {"tasks": [], "decisions": [], "facts": f}
@@ -165,6 +175,9 @@ def build_roadmap(user_id, profile, events, rules, now=None):
         ):
             continue
         family = rule["family"]
+        process = rule.get("process")
+        if family == "M01" and not process and rule.get("mode") == "builtin" and any(r.get("process") == "trip" for r in rules):
+            continue  # Preserve the legacy aggregate only in stored history.
         status, missing = support, support_missing[:]
         episode, cycle = "lifetime", "once"
         specs = deepcopy(rule["deadline_specs"])
@@ -213,16 +226,24 @@ def build_roadmap(user_id, profile, events, rules, now=None):
                         status = "conditional"
                     missing.append(spec["anchor_field"])
         elif family == "M01":
-            applies = not f.get("entry_at")
+            applies = True if process else not arrived
             episode = "pre-entry"
             if f.get("visa_regime") == "unknown":
                 status, missing = "conditional", missing + ["visa_regime"]
             if f.get("visa_regime") == "visa_free":
                 specs = []
-                if f.get("study_form") == "unknown":
+                if process in ("invitation", "initial_visa"):
+                    applies = False
+                if f["university_id"] == "sutd" and process == "trip" and f.get("study_form") == "unknown":
                     status, missing = "conditional", missing + ["study_form"]
+        elif process == "entry_context":
+            episode = f["_entry_episode"]
+            if arrived and not f.get("entry_at"):
+                status, missing = "conditional", ["entry_at"]
+            elif arrived and f.get("entry_purpose") != "study":
+                status, missing = ("conditional" if f.get("entry_purpose") == "unknown" else "needs_review"), ["entry_purpose"]
         elif family in ("M02", "M03"):
-            applies = bool(f.get("entry_at"))
+            applies = True if process else bool(f.get("entry_at"))
             episode = (
                 f["_entry_episode"] if family == "M02" else f["_residence_episode"]
             )
@@ -232,8 +253,8 @@ def build_roadmap(user_id, profile, events, rules, now=None):
                     specs = []
                 else:
                     specs[0]["literal"] = i18n(
-                        "В течение 2 дней после указанного изменения; единицу времени уточнить",
-                        "Within 2 days of the reported change; confirm the time unit",
+                        "В течение 2 рабочих дней после указанного изменения",
+                        "Within 2 working days of the reported change",
                     )
             if f.get("entry_purpose") != "study":
                 status = (
@@ -243,7 +264,7 @@ def build_roadmap(user_id, profile, events, rules, now=None):
                 )
                 missing.append("entry_purpose")
         elif family == "M04":
-            applies = bool(f.get("entry_at"))
+            applies = True if process else bool(f.get("entry_at"))
             episode = f["_residence_episode"]
             task_facts["occurred_at"] = f["_residence_anchor"]
             if f.get("residence_type") == "unknown":
@@ -256,7 +277,7 @@ def build_roadmap(user_id, profile, events, rules, now=None):
             if f["_review_event"]:
                 status = "requires_recheck"
         elif family in ("M05", "M06", "M10"):
-            applies = bool(f.get("entry_at"))
+            applies = True if process else bool(f.get("entry_at"))
             if (
                 f.get("stay_over_90_days") is False
                 and support == "actionable"
@@ -282,7 +303,7 @@ def build_roadmap(user_id, profile, events, rules, now=None):
                     + ["visa_expiry" if not f.get("visa_expiry") else "visa_regime"],
                 )
         elif family == "M08":
-            applies = bool(f.get("entry_at"))
+            applies = True if process else bool(f.get("entry_at"))
             cycle = f["_registration_cycle"]
             episode = f["_residence_episode"]
             if not f.get("registration_expiry"):
@@ -311,6 +332,8 @@ def build_roadmap(user_id, profile, events, rules, now=None):
             status, missing = "needs_review", ["event_legal_effect"]
         if support == "needs_review":
             status, missing = support, support_missing
+        if arrived and f.get("entry_purpose") == "other":
+            status, missing = "needs_review", ["entry_purpose"]
         decisions.append(
             {
                 "rule_id": rule["rule_id"],
@@ -337,6 +360,7 @@ def build_roadmap(user_id, profile, events, rules, now=None):
                 rule,
                 status == "actionable" or s["kind"] == "document_expiry",
                 today,
+                calendar,
             )
             for s in specs
         ]
@@ -388,11 +412,20 @@ def build_roadmap(user_id, profile, events, rules, now=None):
             "eligibility_confidence": rule["eligibility_confidence"],
             "formula_confidence": "P" if dates else "U",
             "demo_model": rule.get("source_type") == "demo_model",
+            "document_previously_known": family == "M04" and bool(f.get("registration_expiry")),
             "auto_completed": (
                 family == "M06" and bool(f.get("fingerprinting_completed"))
             )
             or (family == "M04" and f["_registration_confirmed"]),
         }
+        task["route_order"] = {"invitation": 0, "initial_visa": 1, "trip": 2, "entry_context": 3, "documents": 4, "office": 5, "registration": 6, "visa_renewal": 7, "registration_renewal": 8}.get(process, 9)
+        shape_task(task, rule, f)
+        # Support-envelope decisions cannot be bypassed by a workflow report.
+        if support == "needs_review":
+            task.update(engine_status=support, missing_fields=support_missing)
+            task["result_actions"] = ["question_sent"] if task.get("availability") == "available" and not task.get("auto_completed") else []
+        task["eligibility_decision"] = True if task["engine_status"] in ("actionable", "requires_recheck") else "unknown"
+        decisions[-1].update(eligibility=task["eligibility_decision"], engine_status=task["engine_status"], missing_fields=task["missing_fields"])
         tasks.append(task)
         if family == "M04" and rule.get("residence_actions_i18n"):
             task["action_i18n"] = rule["residence_actions_i18n"].get(

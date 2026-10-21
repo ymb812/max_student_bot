@@ -37,8 +37,8 @@ const output = path.resolve('output/welcome'); fs.mkdirSync(output,{recursive:tr
     };
     const page=await newPage();
     try {
-        let patches=0,events=0;
-        page.on('request',r=>{if(r.url()===base+'/api/me/profile' && r.method()==='PATCH')patches++;if(r.url()===base+'/api/me/events' && r.method()==='POST')events++;});
+        let patches=0,events=0,onboardings=0;
+        page.on('request',r=>{if(r.url()===base+'/api/me/profile' && r.method()==='PATCH')patches++;if(r.url()===base+'/api/me/events' && r.method()==='POST')events++;if(r.url()===base+'/api/me/onboarding'&&r.method()==='POST')onboardings++;});
         await page.goto(base);await page.locator('#start-plan').waitFor();
         assert.equal(await page.locator('#onboard-form').count(),0);
         assert.equal(await page.locator('#start-plan svg').count(),0);
@@ -79,20 +79,24 @@ const output = path.resolve('output/welcome'); fs.mkdirSync(output,{recursive:tr
         await page.goBack();await page.locator('#start-plan').waitFor();
         await page.goForward();await page.locator('[value=arrived]').waitFor();
         assert.equal(await page.locator('[value=arrived]').isChecked(),true);
-        await page.locator('#next').click();await page.locator('[value=leti]').check();
-        await page.locator('[data-language=en]').click();await page.reload();await page.locator('[value=leti]').waitFor();
-        assert.equal(await page.locator('[value=leti]').isChecked(),true);
+        await page.locator('[name=university_id]').selectOption('leti');await page.locator('#next').click();
+        await page.locator('[data-language=en]').click();await page.reload();await page.locator('[name=age_band]').waitFor();
+        assert.equal(await page.evaluate(()=>onboardingDraft.university_id),'leti');
         assert.equal(await page.evaluate(()=>step),1);
         assert.equal(await page.locator('.is-welcome').count(),0);
-        await page.locator('#next').click();await page.locator('[value=visa_free]').check();
-        await page.locator('#next').click();await page.locator('[value=unknown]').check();
+        for(const name of ['age_band','study_status','migration_basis'])await page.locator('[name='+name+']').selectOption('unknown');
+        await page.locator('#next').click();await page.locator('[name=visa_regime]').selectOption('visa_free');
+        await page.locator('[name=entry_at_unknown]').check();
+        await page.locator('[name=entry_purpose]').selectOption('unknown');await page.locator('[name=residence_type]').selectOption('unknown');
+        await page.locator('#next').click();await page.locator('[name=office_package]').selectOption('unknown');await page.locator('[name=registration]').selectOption('unknown');
+        await page.locator('#next').click();
         assert.equal(await page.locator('[name=consent]').isChecked(),false);
-        assert.equal(await page.locator('#next').isDisabled(),true);
+        assert.equal(await page.locator('#onboard-form').evaluate(f=>f.checkValidity()),false);
         await page.locator('[name=consent]').check();await page.locator('[data-language=ru]').click();
         assert.equal(await page.locator('[name=consent]').isChecked(),true);
         assert.equal(patches,0);assert.equal(events,0);
         await page.locator('#next').click();await page.locator('#context-profile').waitFor();
-        assert.equal(patches,1);assert.equal(events,0);
+        assert.equal(patches,0);assert.equal(events,0);assert.equal(onboardings,1);
         assert.equal(await page.evaluate(()=>profile.entry_at),null);
         assert.equal(await page.evaluate(()=>sessionStorage.getItem(onboardingStorageKey())),null);
         await page.reload();await page.locator('#context-profile').waitFor();
@@ -110,19 +114,20 @@ const output = path.resolve('output/welcome'); fs.mkdirSync(output,{recursive:tr
         await legacy.evaluate(()=>{const draft={...onboardingDraft};delete draft.started;sessionStorage.setItem(onboardingStorageKey(),JSON.stringify(draft));});
         await legacy.reload();await legacy.locator('#start-plan').waitFor();
         await legacy.evaluate(()=>{const draft={...onboardingDraft,arrival_status:'planned',university_id:'sutd',step:1};delete draft.started;sessionStorage.setItem(onboardingStorageKey(),JSON.stringify(draft));});
-        await legacy.reload();await legacy.locator('[value=sutd]').waitFor();
-        assert.equal(await legacy.locator('[value=sutd]').isChecked(),true);
+        await legacy.reload();await legacy.locator('[name=age_band]').waitFor();
+        assert.equal(await legacy.evaluate(()=>onboardingDraft.university_id),'sutd');
         await legacy.locator('[data-back]').click();await legacy.locator('[value=planned]').waitFor();
         assert.equal(await legacy.locator('[value=planned]').isChecked(),true);
         await legacy.locator('[data-back]').click();await legacy.locator('#start-plan').waitFor();
         // Even an unanswered first question resumes after an explicit CTA.
         const unanswered=await newPage();await unanswered.goto(base+'/?screen=stages');await unanswered.locator('#start-plan').click();
         await unanswered.reload();await unanswered.locator('#onboard-form').waitFor();
-        assert.equal(await unanswered.locator('#next').isDisabled(),true);
-        await unanswered.locator('[value=planned]').check();await unanswered.locator('#next').click();
-        await unanswered.locator('[value=sutd]').check();await unanswered.locator('#next').click();
-        await unanswered.locator('[value=visa]').check();await unanswered.locator('#next').click();
-        await unanswered.locator('[value=unknown]').check();await unanswered.locator('[name=consent]').check();await unanswered.locator('#next').click();
+        assert.equal(await unanswered.locator('#onboard-form').evaluate(f=>f.checkValidity()),false);
+        await unanswered.locator('[value=planned]').check();await unanswered.locator('[name=university_id]').selectOption('sutd');await unanswered.locator('#next').click();
+        for(const name of ['age_band','study_status','migration_basis'])await unanswered.locator('[name='+name+']').selectOption('unknown');
+        await unanswered.locator('#next').click();await unanswered.locator('[name=visa_regime]').selectOption('visa');
+        await unanswered.locator('[name=preparation]').selectOption('unknown');await unanswered.locator('#next').click();
+        await unanswered.locator('[name=consent]').check();await unanswered.locator('#next').click();
         await unanswered.getByRole('heading',{name:'Все этапы',exact:true}).waitFor();
         assert.equal(await unanswered.evaluate(()=>route.name),'stages','preserve target through onboarding');
 
@@ -142,14 +147,14 @@ const output = path.resolve('output/welcome'); fs.mkdirSync(output,{recursive:tr
         await max.locator('[data-language=en]').click();releaseAuth();await max.locator('#retry-auth').waitFor();
         assert.equal(await max.locator('#retry-auth').innerText(),'Retry sign-in');assert.equal(demoAttempts,0);
         await max.locator('#retry-auth').click();await max.locator('#start-plan').click();
-        await max.locator('[value=arrived]').check();await max.locator('#next').click();await max.locator('[value=leti]').check();
-        await max.reload();await max.locator('[value=leti]').waitFor();
+        await max.locator('[value=arrived]').check();await max.locator('[name=university_id]').selectOption('leti');await max.locator('#next').click();
+        await max.reload();await max.locator('[name=age_band]').waitFor();
         assert.equal(await max.evaluate(()=>token),secondToken);
-        assert.equal(await max.locator('[value=leti]').isChecked(),true,'draft survives verified MAX token rotation');
+        assert.equal(await max.evaluate(()=>onboardingDraft.university_id),'leti','draft survives verified MAX token rotation');
         assert.equal(demoAttempts,0);
         await max.addInitScript(()=>window.WebApp.initData='');
-        await max.reload();await max.locator('[value=leti]').waitFor();
-        assert.equal(await max.locator('[value=leti]').isChecked(),true,'same valid bearer restores its MAX draft without launch data');
+        await max.reload();await max.locator('[name=age_band]').waitFor();
+        assert.equal(await max.evaluate(()=>onboardingDraft.university_id),'leti','same valid bearer restores its MAX draft without launch data');
         await max.evaluate(()=>window.maxBack());await max.locator('[value=arrived]').waitFor();
         await max.evaluate(()=>window.maxBack());await max.locator('#start-plan').waitFor();
         assert.equal(await max.evaluate(()=>onboardingDraft.arrival_status),'arrived');
@@ -166,6 +171,6 @@ const output = path.resolve('output/welcome'); fs.mkdirSync(output,{recursive:tr
         await max.goto(base);await max.locator('.task-detail').waitFor();
         assert.equal(await max.evaluate(()=>route.key),target.task_key);assert.equal(await max.evaluate(()=>window.sawWelcome),false);
         assert.deepEqual(errors,[]);
-        console.log('PASS: welcome RU/EN 320/360/390/430px, short viewport/reduced motion, static preview, no profile writes, CTA/current four questions/consent, Back/Forward/MAX Back, draft reload/legacy/token rotation, completed plan/query/MAX task entry without welcome, auth loading/error/retry without demo fallback.');
+        console.log('PASS: welcome RU/EN 320/360/390/430px, short viewport/reduced motion, static preview, atomic adaptive onboarding/consent, Back/Forward/mocked MAX Back, draft reload/legacy/token rotation, completed plan/query/mocked MAX task entry without welcome, auth loading/error/retry without demo fallback.');
     } finally {await clean(page);await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -35,6 +35,12 @@ def events_for(db, user_id):
     ]
 
 
+def reports_for(db, user_id):
+    return [{**dict(r), "body": json.loads(r["body"]), "dependencies": json.loads(r["dependencies"]),
+             "verification": "user_attested"} for r in db.execute(
+        "SELECT * FROM workflow_reports WHERE user_id=? ORDER BY recorded_at,id", (user_id,))]
+
+
 def rules_for(db, tenant, override=None):
     rules = [
         json.loads(r["body"])
@@ -66,6 +72,7 @@ def snapshot(db, user_id, override=None):
         profile,
         events_for(db, user_id),
         rules_for(db, profile.get("university_id"), override),
+        reports=reports_for(db, user_id),
     )
 
 
@@ -106,6 +113,12 @@ def plan_diff(db, user_id, calculated):
         elif previous and previous.get("completion_basis") == "reported_fact":
             task["user_status"] = previous.get("user_status_before_auto", "not_started")
             task["completed_at"] = previous.get("completed_at_before_auto")
+        if task.get("result_report_id") and task.get("workflow_status") in ("waiting", "partial", "needs_help"):
+            task["user_status"] = "in_progress"
+            task["completed_at"] = None
+        if task.get("process") and task["user_status"] == "completed" and not auto:
+            # A legacy manual completion means exactly the old action, not document receipt.
+            task["workflow_status"] = "completed"
         desired[key] = task
         if previous != task:
             changes.append({"task_key": key, "before": previous, "after": task})
@@ -117,6 +130,7 @@ def plan_diff(db, user_id, calculated):
             "requires_recheck"
             if (
                 previous["family"] == "M04"
+                and (previous["user_status"] == "completed" or previous.get("document_previously_known"))
                 and previous["episode_id"] in f["_episodes"]
                 and previous["episode_id"] != f["_residence_episode"]
                 and not f["_registration_confirmed"]
@@ -124,6 +138,21 @@ def plan_diff(db, user_id, calculated):
             else "superseded"
         )
         updated = {**previous, "engine_status": status}
+        if previous.get("process"):
+            updated["result_actions"] = []
+        for receipt in f.get("_report_receipts", []):
+            if receipt["task_key"] == key:
+                updated.update(completion_basis="reported_fact", user_status="completed", workflow_status="completed",
+                               result_report_id=receipt["id"], completed_at=previous.get("completed_at") or receipt["recorded_at"],
+                               user_status_before_auto=previous.get("user_status_before_auto", previous["user_status"]),
+                               completed_at_before_auto=previous.get("completed_at_before_auto", previous.get("completed_at")))
+        issuance = f.get("_visa_issued_event") if previous["family"] == "M07" else f.get("_registration_issued_event") if previous["family"] == "M08" else None
+        current_cycle = f["_visa_cycle"] if previous["family"] == "M07" else f["_registration_cycle"]
+        if issuance and previous["cycle_id"] != current_cycle and previous["engine_status"] != "superseded" and previous.get("availability", "available") == "available":
+            updated.update(completion_basis="reported_fact", user_status="completed", workflow_status="completed",
+                           completed_at=previous.get("completed_at") or stamp(),
+                           user_status_before_auto=previous.get("user_status_before_auto", previous["user_status"]),
+                           completed_at_before_auto=previous.get("completed_at_before_auto", previous.get("completed_at")))
         medical_report = f["_medical_reported"]
         closes_initial = (
             medical_report
@@ -149,11 +178,121 @@ def plan_diff(db, user_id, calculated):
             )
             updated["user_status"] = "completed"
             updated["completed_at"] = previous.get("completed_at") or stamp()
+        orphaned = f.get("_workflow", {}).get(key)
+        if orphaned and not orphaned["dependencies_valid"]:
+            updated.update(engine_status="requires_recheck", workflow_status="needs_help", availability="available",
+                           result_report_id=orphaned["id"], result_actions=[],
+                           availability_reason_i18n={"ru": "Основание этого результата отменено или исправлено. Проверьте запись в истории и подтвердите актуальный документ в текущем цикле.",
+                                                     "en": "The basis of this result was retracted or corrected. Review its history and confirm your current document in the current cycle."})
         # Do not overwrite source/version/history of completed tasks from an earlier episode.
         desired[key] = updated
         if previous != updated:
             changes.append({"task_key": key, "before": previous, "after": updated})
     return list(desired.values()), changes
+
+
+PROCESS_OUTCOMES = {
+    "invitation": {"requested", "received"}, "initial_visa": {"submitted", "received"},
+    "trip": {"completed"}, "documents": {"completed", "question"},
+    "office": {"partial", "completed"}, "registration": {"submitted", "received"},
+    "visa_renewal": {"submitted", "received"}, "registration_renewal": {"submitted", "received"},
+    "consultation": set(),
+}
+
+
+def record_result(db, user_id, task_key, result, *, initial=False, recalc=True):
+    body = result.model_dump(mode="json")
+    previous = db.execute("SELECT * FROM workflow_reports WHERE user_id=? AND idempotency_key=?", (user_id, result.idempotency_key)).fetchone()
+    if previous:
+        saved = json.loads(previous["body"])
+        if previous["task_key"] != task_key or saved["request"] != body:
+            raise HTTPException(409, "Idempotency key was used for another result")
+        return previous["id"], False
+    calculated = snapshot(db, user_id)
+    task = next((t for t in calculated["tasks"] if t["task_key"] == task_key), None)
+    original = None
+    if result.supersedes_report_id:
+        original = db.execute("SELECT * FROM workflow_reports WHERE id=? AND user_id=?", (result.supersedes_report_id, user_id)).fetchone()
+        if not original or original["retracted_at"] or original["task_key"] != task_key or db.execute("SELECT id FROM workflow_reports WHERE supersedes_report_id=? AND retracted_at IS NULL", (original["id"],)).fetchone():
+            raise HTTPException(409, "Only an active owned result may be corrected")
+        if task is None:
+            row = db.execute("SELECT body FROM tasks WHERE task_key=? AND user_id=?", (task_key, user_id)).fetchone()
+            task = json.loads(row["body"]) if row else None
+    if not task or not task.get("process"):
+        raise HTTPException(404, "Current process not found")
+    process = task["process"]
+    if result.outcome not in PROCESS_OUTCOMES.get(process, set()) | {"question_sent", "clarified"}:
+        raise HTTPException(422, "Outcome does not belong to this process")
+    if result.document_expiry and (process not in ("initial_visa", "visa_renewal", "registration", "registration_renewal") or result.outcome != "received"):
+        raise HTTPException(422, "Expiry belongs only to a received document")
+    if process == "trip" and result.outcome == "completed" and set(result.checklist) != {"documents", "arrival", "housing"}:
+        raise HTTPException(422, "Confirm all three trip checks")
+    if result.checklist and process != "trip":
+        raise HTTPException(422, "Trip checklist does not belong to this process")
+    if result.occurred_at and process in ("documents", "office", "registration", "registration_renewal") and not original:
+        anchor = calculated["facts"].get("_residence_anchor")
+        if anchor and str(result.occurred_at) < str(anchor)[:10]:
+            raise HTTPException(422, "Result predates the current episode")
+    if result.missing_documents and (process != "office" or result.outcome != "partial" or any(i >= len(task["documents_i18n"]["ru"]) for i in result.missing_documents)):
+        raise HTTPException(422, "Invalid remaining documents")
+    if not initial and not original:
+        if task.get("auto_completed"):
+            raise HTTPException(409, "Result already recorded; correct it in history")
+        external = result.external_result and result.outcome in ("requested", "submitted", "received", "completed", "partial")
+        if not external and result.outcome not in task.get("result_actions", []):
+            raise HTTPException(409, "This result is not available; refresh the roadmap")
+        if external and task.get("availability") == "past":
+            raise HTTPException(409, "Preparation belongs to a past journey")
+        if external and process in ("documents", "office", "registration", "registration_renewal") and not (calculated["facts"].get("entry_at") or calculated["facts"].get("arrival_status") == "arrived"):
+            raise HTTPException(409, "An arrived context is required")
+    dependencies = [] if result.external_result or initial else task.get("dependency_report_ids", [])
+    stored_body = {**body, "request": body, "provenance": "onboarding_self_report" if initial else "student_self_report"}
+    facts = calculated["facts"]
+    stored_body["basis_cycle"] = facts["_visa_cycle"] if process in ("initial_visa", "visa_renewal") else facts["_registration_cycle"]
+    if original:
+        stored_body["basis_cycle"] = json.loads(original["body"])["basis_cycle"]
+        dependencies = json.loads(original["dependencies"])
+    rid = uid()
+    db.execute("INSERT INTO workflow_reports VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        rid, user_id, task_key, process, task["episode_id"], task["cycle_id"], result.outcome,
+        str(result.occurred_at) if result.occurred_at else None, stamp(), dumps(stored_body), dumps(dependencies),
+        result.idempotency_key, result.supersedes_report_id, None))
+    if recalc:
+        recalculate(db, user_id, "result_corrected" if original else "result_reported", rid, force_revision=True)
+    return rid, True
+
+
+def initialize_route(db, user_id, request):
+    from app.models import WorkflowResult
+    body = request.model_dump(mode="json")
+    receipt = db.execute("SELECT * FROM onboarding_receipts WHERE user_id=? AND idempotency_key=?", (user_id, request.idempotency_key)).fetchone()
+    if receipt:
+        if json.loads(receipt["body"]) != body:
+            raise HTTPException(409, "Idempotency key was used for another onboarding")
+        return receipt["revision_id"], False
+    old = json.loads(db.execute("SELECT profile FROM users WHERE id=?", (user_id,)).fetchone()["profile"])
+    if old.get("consent"):
+        raise HTTPException(409, "Onboarding is already saved; use targeted profile or result updates")
+    stored_profile = {**body["profile"], "preparation_state": "not_started" if request.preparation == "not_started" else "unknown"}
+    db.execute("UPDATE users SET profile=?,updated_at=? WHERE id=?", (dumps(stored_profile), stamp(), user_id))
+    initial_results = []
+    if request.preparation in ("requested", "invitation_received"):
+        initial_results.append(("invitation", "requested" if request.preparation == "requested" else "received"))
+    if request.preparation in ("visa_submitted", "visa_received"):
+        initial_results.append(("initial_visa", "submitted" if request.preparation == "visa_submitted" else "received"))
+    if request.office_package in ("partial", "completed"):
+        initial_results.append(("office", request.office_package))
+    if request.registration in ("submitted", "received"):
+        initial_results.append(("registration", request.registration))
+    for process, outcome in initial_results:
+        task = next(t for t in snapshot(db, user_id)["tasks"] if t.get("process") == process)
+        expiry = request.profile.visa_expiry if process == "initial_visa" else request.profile.registration_expiry if process == "registration" else None
+        record_result(db, user_id, task["task_key"], WorkflowResult(outcome=outcome,
+            document_expiry=expiry if outcome == "received" else None, external_result=True, confirmed=True,
+            idempotency_key="onboarding-" + hashlib.sha256((request.idempotency_key + ":" + process).encode()).hexdigest()), initial=True, recalc=False)
+    revision = recalculate(db, user_id, "onboarding_confirmed", request.idempotency_key, force_revision=True)
+    db.execute("INSERT INTO onboarding_receipts VALUES(?,?,?,?)", (user_id, request.idempotency_key, dumps(body), revision))
+    return revision, True
 
 
 def enqueue(db, user_id, key, body):
@@ -473,6 +612,9 @@ def draft_body(draft, tenant, version):
                 "checked_at": str(draft.checked_at),
                 "confidence": "U" if draft.source_type == "demo_model" else "C",
                 "notes": draft.evidence_note,
+                "section_label": draft.source_section,
+                "purpose_i18n": draft.source_purpose_i18n,
+                "navigation_verified": draft.source_navigation_verified,
             }
         ],
     )

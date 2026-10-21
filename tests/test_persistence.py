@@ -82,7 +82,8 @@ def test_backup_rejects_overwrite_and_path_escape(client, tmp_path):
         backup_database(source, target)
     with pytest.raises(ValueError):
         backup_database(source, tmp_path / "outside.sqlite3")
-    assert verify_snapshot(target)["rules"] == 20
+    from app.catalog import seed_rules
+    assert verify_snapshot(target)["rules"] == len(seed_rules())
 
 
 def test_snapshot_rejects_foreign_database(tmp_path):
