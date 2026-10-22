@@ -142,8 +142,11 @@ def shape_task(task, rule, f):
     elif not arrived:
         task.update(availability="future", availability_reason_i18n=bi("После фактического въезда; пока можно ознакомиться с инструкцией.", "After actual entry; you can read the instructions now."))
     elif not f.get("entry_at") and process not in ("visa_renewal",):
-        # Completed external facts are retained even while entry date is unknown.
-        if not task.get("auto_completed"):
+        # Reporting an office package needs an arrived context, not a date for
+        # deadline arithmetic. Keep the same initial residence/entry key.
+        if process == "office":
+            task["availability_reason_i18n"] = bi("Дата въезда пока неизвестна. Можно отметить уже переданные документы.", "Your entry date is unknown. You can still record documents already submitted.")
+        elif not task.get("auto_completed"):
             task.update(availability="future", availability_reason_i18n=bi("Сначала уточните дату последнего въезда.", "First clarify the date of your last entry."))
     if process == "visa_renewal" and not f.get("visa_expiry") and not arrived:
         task["availability"] = "future"
@@ -165,7 +168,10 @@ def shape_task(task, rule, f):
             "registration_renewal": ["received"] if waiting else ["submitted", "received"],
             "consultation": ["clarified"] if waiting else ["question_sent"],
         }.get(process, [])
-        if task["engine_status"] in ("conditional", "needs_review"):
+        office_timing_only = (process == "office" and task["engine_status"] == "conditional"
+                              and bool(task.get("missing_fields"))
+                              and set(task["missing_fields"]) <= {"entry_at", "arrival_at"})
+        if task["engine_status"] in ("conditional", "needs_review") and not office_timing_only:
             actions = ["clarified"] if waiting else ["question_sent"]
         if process == "documents" and task.get("reported_outcome") in ("question", "question_sent", "clarified"):
             actions = ["completed", "question_sent"]

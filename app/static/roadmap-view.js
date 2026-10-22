@@ -33,7 +33,7 @@ const RoadmapView = (() => {
     const progressLabel = (p, language='ru') => {
         const en=language==='en';
         const count=p.completed===p.total?`${p.completed}`:(en?`${p.completed} of ${p.total}`:`${p.completed} из ${p.total}`);
-        if(p.pending) return (p.total ? (en?`Completed ${count} actions · `:`Выполнено ${count} действий · `):'')
+        if(p.pending) return (p.total ? (en?`Actions completed: ${count}\n`:`Выполнено действий: ${count}\n`):'')
             +(en?`Other items to clarify or review: ${p.pending}`:`Ещё нужно уточнить или проверить: ${p.pending}`);
         return p.total?(en?`Completed ${p.completed} of ${p.total} actions`:`Выполнено ${p.completed} из ${p.total} действий`):p.future?(en?'Upcoming tasks depend on earlier steps or missing information':'Действия появятся после предыдущих шагов или уточнения данных'):(en?'No tasks in this section yet':'В этом разделе пока нет действий');
     };

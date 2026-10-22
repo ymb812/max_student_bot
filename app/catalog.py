@@ -219,14 +219,14 @@ def seed_rules():
                         [
                             "Оригинал паспорта + 3 копии заполненных страниц",
                             "Миграционная карта + 3 копии",
-                            "Документ об учёбе + 2 копии",
-                            "Нотариальный перевод + 1 копия",
+                            "Один документ об обучении в СПбГУПТД + 2 его копии: договор на обучение, направление Минобрнауки на обучение или выписка из приказа о зачислении",
+                            "Нотариальный перевод паспорта + 1 копия",
                         ],
                         [
                             "Original passport + 3 copies of completed pages",
                             "Migration card + 3 copies",
-                            "Study document + 2 copies",
-                            "Notarised translation + 1 copy",
+                            "One proof of study at SUTD + 2 copies of that document: study agreement, Ministry of Education and Science study referral or extract from the enrolment order",
+                            "Notarised passport translation + 1 copy",
                         ],
                     )
                 else:

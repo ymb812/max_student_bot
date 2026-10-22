@@ -443,7 +443,8 @@ def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calen
         # Support-envelope decisions cannot be bypassed by a workflow report.
         if support == "needs_review":
             task.update(engine_status=support, missing_fields=support_missing)
-            task["result_actions"] = ["question_sent"] if task.get("availability") == "available" and not task.get("auto_completed") else []
+            review_action = "clarified" if task.get("reported_outcome") == "question_sent" else "question_sent"
+            task["result_actions"] = [review_action] if task.get("availability") == "available" and not task.get("auto_completed") else []
         task["eligibility_decision"] = True if task["engine_status"] in ("actionable", "requires_recheck") else "unknown"
         if process:
             explain_task(task, f)

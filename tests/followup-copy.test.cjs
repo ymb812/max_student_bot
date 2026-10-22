@@ -78,10 +78,10 @@ test('result cards show the status transition once and retain changed document d
  }
 });
 
-test('document confirmation explains the report and uses an optional check date',()=>{
+test('document confirmation does not request an unnecessary date',()=>{
  for(const en of [false,true]) {
   const c=ctx(en);c.t={process:'documents'};
-  assert.match(vm.runInContext("resultFormHint(t,'completed')",c),en?/history/:/истории/);
-  assert.match(vm.runInContext("resultDateLabel(t,'completed')",c),en?/optional/:/необязательно/);
+  assert.equal(vm.runInContext("resultFormHint(t,'completed')",c),'');
+
  }
 });

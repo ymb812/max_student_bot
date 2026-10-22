@@ -34,6 +34,9 @@
 .student-app .secondary { color:var(--brand); border-color:var(--line); background:#fff; }
 .wide { display:flex; width:100%; margin-top:16px; }
 .wide span { margin-left:8px; }
+.student-app #event-form .actions { display:block; }
+.student-app #event-form .actions>.primary { display:block; width:100%; min-height:52px; }
+.stage-copy .stage-progress { white-space:pre-line; }
 .tile-icon { display:grid; place-items:center; width:48px; height:48px; flex:0 0 auto; border-radius:14px; background:#e9f3ff; color:#176de0; }
 .context-card { width:100%; padding:6px 0 14px; display:flex; align-items:center; gap:10px; text-align:left; margin-bottom:0; background:none; min-height:50px; }
 .context-card .tile-icon { background:none; width:20px; height:30px; border-radius:0; }

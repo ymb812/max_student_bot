@@ -33,9 +33,9 @@ const output=path.resolve('output/project-review');fs.mkdirSync(output,{recursiv
         await openHistory();await page.locator('[data-history-filter=all]').click();await page.locator('[data-revision]').first().click();await page.locator('#result-plan').waitFor();
         assert.equal(await page.locator('h1').innerText(),'Изменения маршрута');assert.match(await page.locator('.success-note').innerText(),/Уточнение данных/);
         // Optional facts survive corrections through the actual form.
-        await page.locator('[data-nav=events]').click();await page.locator('[data-event=entry_recorded]').click();
-        await page.locator('[name=occurred_at]').fill('2026-09-02');await page.locator('[name=arrival_at]').fill('2026-09-02T13:12:34');await page.locator('[name=entry_purpose]').selectOption('study');await submitEvent();
-        await openHistory();await page.locator('[data-edit-event]').first().click();assert.equal(await page.locator('[name=arrival_at]').inputValue(),'2026-09-02T13:12:34');await submitEvent();
+        // Seed a legacy entry: the new form no longer asks for city arrival.
+        await page.evaluate(async()=>{await api('/me/events','POST',{type:'entry_recorded',occurred_at:'2026-09-02',payload:{entry_purpose:'study',visa_regime:'visa',residence_type:'dorm',arrival_at:'2026-09-02T13:12:34+03:00'},confirmed:true,idempotency_key:crypto.randomUUID()});await refreshSnapshot();});
+        await openHistory();await page.locator('[data-edit-event]').first().click();assert.equal(await page.locator('[name=arrival_at]').count(),0);await submitEvent();
         let events=await page.evaluate(async()=>(await api('/me/events')).events);const corrected=events.find(e=>e.supersedes_event_id);assert.equal(corrected.payload.arrival_at,'2026-09-02T13:12:34+03:00');
         await page.locator('[data-nav=events]').click();await page.locator('[data-event=registration_confirmed]').click();await page.locator('[name=occurred_at]').fill('2026-09-03');await page.locator('[name=registration_expiry]').fill('2027-02-01');await page.locator('[name=stay_expiry]').fill('2027-01-15');await submitEvent();
         await openHistory();await page.locator('[data-edit-event]').first().click();assert.equal(await page.locator('[name=stay_expiry]').inputValue(),'2027-01-15');await submitEvent();

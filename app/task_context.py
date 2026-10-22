@@ -47,7 +47,8 @@ def explain_task(task, facts):
         context["residence_event_at"] = facts.get("_residence_anchor")
     if process in ("initial_visa", "visa_renewal", "registration_renewal"):
         kind = "visa" if "visa" in process else "registration"
-        context.update(document_kind=kind, document_expiry=facts.get(kind + "_expiry"))
+        if kind != "visa" or facts.get("_visa_received") or facts.get("visa_expiry") or facts.get("_visa_issued_event"):
+            context.update(document_kind=kind, document_expiry=facts.get(kind + "_expiry"))
     if task.get("family") == "M10":
         context["medical_completed_at"] = facts.get("last_medical_completed_at")
     task["context_dates"] = context

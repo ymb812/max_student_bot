@@ -79,7 +79,7 @@ test('reporting a document question keeps unresolved work explicit without count
     assert.equal(p.total,3);
     assert.equal(p.pending,1);
     assert.equal(p.done,false);
-    assert.equal(view.progressLabel(p),'Выполнено 3 действий · Ещё нужно уточнить или проверить: 1');
+    assert.equal(view.progressLabel(p),'Выполнено действий: 3\nЕщё нужно уточнить или проверить: 1');
     assert.match(view.progressLabel(p,'en'),/Other items to clarify or review: 1/);
     assert.doesNotMatch(view.progressLabel(view.progress([review],'arrival')),/Нет текущих/);
     assert.equal(view.progress([...completed,{...review,availability:'past'}],'arrival').pending,0);

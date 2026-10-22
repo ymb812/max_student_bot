@@ -49,8 +49,8 @@ const out=path.resolve(process.env.LAYOUT_OUTPUT||'output/forms-results');fs.mkd
     await refreshSnapshot();lang=language;navigate({name:'task',key:plan.tasks.find(t=>t.process==='documents').task_key},true);
    },{tenant,language});
    await page.locator('[data-result=completed]').click();
-   assert.match(await page.locator('.result-explanation').innerText(),language==='ru'?/истории/:/history/);
-   assert.equal(await page.locator('[name=occurred_at]').getAttribute('required'),null);
+   assert.equal(await page.locator('.result-explanation').count(),0);
+   assert.equal(await page.locator('[name=occurred_at]').count(),0);
    for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});await shot(`${tenant}-${language}-${width}-result-form`);}
    await page.locator('#result-form .checkbox').click();await page.locator('#result-form button[type=submit]').click();await page.locator('.revision-card').waitFor();
    assert.equal(await page.locator('.revision-card').count(),1);

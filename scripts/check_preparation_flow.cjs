@@ -23,8 +23,7 @@ const out=path.resolve(process.env.LAYOUT_OUTPUT||'output/preparation-flow');fs.
    let count=0;
    for(const [process,outcome,state] of [['invitation','requested','waiting'],['invitation','received','completed'],['initial_visa','submitted','waiting'],['initial_visa','received','completed'],['trip','completed','completed']]) {
     await open(process);await page.locator('[data-result='+outcome+']').click();
-    if(process==='initial_visa'&&outcome==='submitted')assert.equal(await page.locator('[name=occurred_at]').count(),0);
-    else assert.equal(await page.locator('[name=occurred_at]').inputValue(),'');
+    assert.equal(await page.locator('[name=occurred_at]').count(),0);
     if(process==='trip')for(const item of ['documents','arrival','housing'])await page.locator('[name=check_'+item+']').check();
     await page.locator('[name=confirmed]').check();await page.locator('#result-form button[type=submit]').click();
     await page.locator('#result-plan').click();count++;
@@ -49,8 +48,7 @@ const out=path.resolve(process.env.LAYOUT_OUTPUT||'output/preparation-flow');fs.
     const historyRow=page.locator('.history-item').filter({has:page.locator(`[data-edit-result="${latest.id}"]`)});
     assert.equal(await historyRow.count(),1);
     assert.ok((await historyRow.innerText()).includes(t.title_i18n[language]));
-    if(process==='initial_visa'&&outcome==='submitted')assert.doesNotMatch(await historyRow.innerText(),/Дата результата|Result date/);
-    else assert.match(await historyRow.innerText(),language==='ru'?/Дата результата: Неизвестна/:/Result date: Unknown/);
+    assert.doesNotMatch(await historyRow.innerText(),/Дата результата|Result date/);
     const label=[tenant,language,process,outcome].join('-');checks.push({label,workflow_status:t.workflow_status,saved_results:count,unknown_dates_preserved:true});
     fs.writeFileSync(path.join(out,label+'.txt'),await page.locator('body').innerText());
    }

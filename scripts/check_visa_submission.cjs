@@ -48,7 +48,7 @@ const out=path.resolve(process.env.LAYOUT_OUTPUT||'output/visa-submission');fs.m
     assert.match(await row.innerText(),language==='ru'?/Дата результата: 18/:/Result date: 18/);
     await page.evaluate(key=>navigate({name:'task',key},true),key);await page.locator('[data-result=received]').click();
     assert.equal(await page.locator('[name=document_expiry]').count(),1);
-    assert.equal(await page.locator('[name=occurred_at]').count(),1);
+    assert.equal(await page.locator('[name=occurred_at]').count(),0);
     checks.push({university,language,submissionWithoutDate:true,waitingAfterReload:true,legacyDateRetained:true,receiptDatesRetained:true});
    } finally {await page.evaluate(async()=>api('/me/profile','DELETE'));await page.close();}
   }

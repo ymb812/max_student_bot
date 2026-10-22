@@ -89,11 +89,11 @@ function taskDisplayTitle(t) {
 function taskInstruction(t) {
     const outcome=t.reported_outcome, process=t.process;
     if(t.engine_status==='requires_recheck')return tr('Проверьте результат повторно. Прежняя отметка сохранена в истории.','Check this result again. Your previous report is kept in History.');
-    if(t.availability==='past')return tr('Этот пункт больше не требует действий.','No further action is needed for this item.');
+    if(t.availability==='past')return content(t.availability_reason_i18n)||tr('Этот пункт больше не требует действий.','No further action is needed for this item.');
     if(outcome==='question_sent')return tr('Вы отметили отправку вопроса. Ждёте ответ; когда получите его, отметьте результат здесь.','You recorded sending a question. You are waiting for an answer; record it here when it arrives.');
     if(outcome==='clarified')return tr('Вы отметили получение ответа. Порядок дальнейших действий и применимость процедуры ещё нужно проверить.','You recorded receiving an answer. The next steps and whether the procedure applies still need checking.');
     if(outcome==='question')return tr('Вы отметили ошибку или вопрос. Опишите отделу, в каком документе возникло расхождение. После ответа можно снова сообщить результат проверки.','You reported an error or question. Tell the office which document has a discrepancy. After their answer, you can record a new check result.');
-    if(outcome==='partial')return tr('Часть документов передана. ','Some documents have been submitted. ')+remainingDocuments(t)+'.';
+    if(outcome==='partial')return t.missing_documents?.length?tr('Часть документов передана. Передайте оставшиеся документы из списка ниже.','Some documents have been submitted. Submit the remaining documents listed below.'):tr('Часть документов передана. Какие документы ещё нужно передать — пока не указано.','Some documents have been submitted. The remaining documents have not been specified.');
     if(t.workflow_status==='waiting') {
         if(process==='invitation')return tr('Запрос уже отправлен. Когда получите приглашение, нажмите «Приглашение получено».','Your request has been sent. When your invitation arrives, select “Invitation received”.');
         if(process?.includes('visa'))return tr('Документы на визу поданы. Когда получите визу, отметьте «Виза получена». Дату окончания можно указать, если она известна.','Your visa documents have been submitted. When you receive your visa, select “Visa received”. Add its expiry date if known.');
@@ -110,28 +110,28 @@ function taskInstruction(t) {
             visa_renewal:tr('Вы отметили получение новой визы. Её срок отображается в плане, если известен.','You reported receiving a new visa. Its expiry appears in your plan if known.'),
             registration_renewal:tr('Вы отметили получение новой регистрации. Её срок отображается в плане, если известен.','You reported receiving new registration. Its expiry appears in your plan if known.')})[process]||content(t.action_i18n);
     }
+    if(['conditional','needs_review'].includes(t.engine_status)) {
+        if(t.family==='M06')return tr('Уточните в указанном отделе, нужно ли вам проходить дактилоскопию и фотографирование и где их пройти. Если они требуются, пройдите их и сохраните документ о прохождении.','Ask the office listed here whether you need fingerprinting and photographs and where to have them taken. If they are required, complete them and keep the confirmation document.');
+        if(t.family==='M05')return tr('Уточните в указанном отделе, нужно ли вам проходить медицинское освидетельствование и где его пройти. Если оно требуется, пройдите его и сохраните выданные медицинские документы.','Ask the office listed here whether you need a medical examination and where to have it. If it is required, complete it and keep the medical documents issued to you.');
+        if(t.family==='M10')return tr('Уточните в указанном отделе, нужно ли вам проходить повторное медицинское освидетельствование и где его пройти. Если оно требуется, пройдите его и сохраните новые медицинские документы.','Ask the office listed here whether you need a repeat medical examination and where to have it. If it is required, complete it and keep your new medical documents.');
+    }
     return content(t.action_i18n);
 }
-function resultUsesDate(t,outcome) {
-    return !(outcome==='submitted'&&['initial_visa','visa_renewal'].includes(t.process));
+function resultOccurredAt(original,outcome,editingDate,value) {
+    // New reports never inherit hidden dates from drafts or another outcome.
+    if(!original || original.outcome!==outcome)return null;
+    return editingDate ? value||null : original.occurred_at||null;
 }
 function resultFormHint(t,outcome) {
-    if(!resultUsesDate(t,outcome))return '';
     if(outcome==='question_sent')return tr('Отправьте вопрос в отдел самостоятельно. Здесь можно отметить, что вы это сделали.','Send your question to the office yourself. Here you can record that you have done so.');
-    if(t.process==='documents'&&outcome==='completed')return tr('Отметим проверку выполненной и обновим план. Если помните дату проверки, укажите её — она сохранится в истории.','We’ll mark the check as completed and update your plan. If you remember the check date, add it for your history.');
-    return tr('Сохраним вашу отметку и обновим план. Если дату не помните, оставьте поле пустым.','We’ll save your report and update your plan. Leave the date blank if you don’t remember it.');
+    if(outcome==='clarified')return tr('Получение ответа не подтверждает применимость процедуры.','Receiving an answer does not confirm that the procedure applies.');
+    return '';
 }
 function documentListView(t) {
     const documents=content(t.documents_i18n)||[];
     const instructions=t.document_instruction_indices||[];
     const listed=documents.filter((_,i)=>!instructions.includes(i));
     return `${instructions.length?`<p>${esc(content(t.document_note_i18n))}</p>`:''}${t.document_guidance_i18n?`<p>${esc(content(t.document_guidance_i18n))}</p>`:''}${listed.length?`<ul class="task-documents">${listed.map(d=>`<li>${esc(d)}</li>`).join('')}</ul>`:''}`;
-}
-function resultDateLabel(t,outcome) {
-    if(t.process==='documents'&&outcome==='completed')return tr('Когда проверили документы? · необязательно','When did you check the documents? · optional');
-    const labels={requested:['Когда отправили запрос?','When did you send the request?'],submitted:['Когда подали документы?','When did you submit the documents?'],partial:['Когда передали часть документов?','When did you submit some of the documents?'],question:['Когда обнаружили ошибку или вопрос?','When did you notice the error or question?'],question_sent:['Когда отправили вопрос?','When did you send the question?'],clarified:['Когда получили ответ?','When did you receive the answer?']};
-    if(outcome==='received')return (t.process==='invitation'?tr('Когда получили приглашение?','When did you receive your invitation?'):t.process.includes('visa')?tr('Когда получили визу?','When did you receive your visa?'):tr('Когда получили регистрацию?','When did you receive your registration?'))+' '+tr('Если знаете','If known');
-    return tr(...(labels[outcome]||['Когда завершили действие?','When did you complete the action?']))+' '+tr('Если знаете','If known');
 }
 function documentDateLabel(d) {
     const anchor=d.anchor_field||'';
@@ -166,7 +166,9 @@ function taskContextLabel(t) {
     const c=t.context_dates;
     if(!c)return '';
     const parts=[];
-    if(c.document_kind)parts.push((c.document_kind==='visa'?tr('Виза до ','Visa valid until '):tr('Регистрация до ','Registration valid until '))+(c.document_expiry?formatDate(c.document_expiry):tr('неизвестной даты','an unknown date')));
+    // Older persisted revisions also attached document context before receipt.
+    const documentKnown=c.document_kind&&(t.process!=='initial_visa'||c.document_expiry||t.reported_outcome==='received'||t.auto_completed||t.user_status==='completed');
+    if(documentKnown)parts.push(c.document_expiry?(c.document_kind==='visa'?tr('Виза до ','Visa valid until '):tr('Регистрация до ','Registration valid until '))+formatDate(c.document_expiry):(c.document_kind==='visa'?tr('Срок действия визы пока неизвестен','Visa expiry date not known yet'):tr('Срок действия регистрации пока неизвестен','Registration expiry date not known yet')));
     else if(c.medical_completed_at)parts.push(tr('После медосмотра от ','Following the examination on ')+formatDate(c.medical_completed_at));
     else if(c.residence_event_at)parts.push(tr('Изменение проживания от ','Residence change on ')+formatDate(c.residence_event_at));
     else if(c.entry_at)parts.push(tr('Въезд ','Entry on ')+formatDate(c.entry_at));

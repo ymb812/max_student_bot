@@ -316,7 +316,7 @@ function taskInformationView(key) {
         ${taskInstruction(t)!==content(t.action_i18n)?`<section class="task-section"><h2>${tr('Порядок действий','Procedure')}</h2><p class="reference-instruction">${esc(content(t.action_i18n))}</p>${content(t.performer_i18n)?`<p>${esc(content(t.performer_i18n))}</p>`:''}</section>`:''}
         ${t.availability==='past'?taskSupportingSections(t):''}
         <section class="task-section"><h2>${tr('Источники','Sources')}</h2>${t.source_snapshot.map(sourceCard).join('')}</section>
-        <section class="task-section"><h2>${tr('Что проверено','Verification details')}</h2><dl class="reference-facts"><dt>${tr('Что говорит источник','What the source confirms')}</dt><dd>${esc(confidenceLabel(t.norm_confidence))}</dd><dt>${tr('Применимость к вам','Applicability to you')}</dt><dd>${esc(confidenceLabel(['conditional','needs_review','requires_recheck'].includes(t.engine_status)?'C':t.eligibility_confidence))}</dd><dt>${tr('Проверен ли расчёт даты','Date calculation verified')}</dt><dd>${esc(confidenceLabel(t.formula_confidence))}</dd><dt>${tr('Версия правила','Rule version')}</dt><dd>${esc(t.rule_version)}</dd></dl></section></div>`);
+        <section class="task-section"><h2>${tr('Что проверено','Verification details')}</h2><dl class="reference-facts"><dt>${tr('Что говорит источник','What the source confirms')}</dt><dd>${esc(confidenceLabel(t.norm_confidence))}</dd><dt>${t.prototype_timing?tr('Условия демонстрационного плана','Conditions used in the demonstration plan'):tr('Применимость к вам','Applicability to you')}</dt><dd>${t.prototype_timing?tr('Использованы ваши ответы. Этот расчёт не подтверждает, что требование относится к вам.','Your answers were used. This calculation does not confirm that the requirement applies to you.'):esc(confidenceLabel(['conditional','needs_review','requires_recheck'].includes(t.engine_status)?'C':t.eligibility_confidence))}</dd><dt>${t.prototype_timing?tr('Основание расчёта даты','Basis for the date calculation'):tr('Проверен ли расчёт даты','Date calculation verified')}</dt><dd>${t.prototype_timing?tr('Демонстрационная модель','Demonstration model'):esc(confidenceLabel(t.formula_confidence))}</dd><dt>${tr('Версия правила','Rule version')}</dt><dd>${esc(t.rule_version)}</dd></dl></section></div>`);
 }
 function taskDetailView(key) {
     const t = route.snapshot || plan.tasks.find(t => t.task_key === key);
@@ -341,7 +341,7 @@ function taskDetailView(key) {
         ${!past&&(t.availability_reason_i18n||t.waiting_i18n)?`<div class="task-context">${[...new Set([content(t.availability_reason_i18n),content(t.waiting_i18n)].filter(Boolean))].map(text=>`<p>${esc(text)}</p>`).join('')}</div>`:''}
         ${!past&&(missing.length||t.engine_status==='needs_review')?`<section class="task-attention"><h2>${tr('Что нужно уточнить','What needs clarification')}</h2><p>${esc(content(t.eligibility_reason))}</p>${missing.length?`<p>${esc(missing.map(fieldName).join(', '))}</p><button class="secondary wide" id="detail-profile">${t.engine_status==='conditional'&&missing.length&&missing.every(k=>editableFields().includes(k))?tr('Дополнить данные','Complete information'):tr('Как уточнить в отделе','How to check with the office')}</button>`:''}</section>`:''}
         ${past?'':`<section class="task-section ${t.dates.length?'task-timing':'task-no-date'}"><h2>${tr('Когда выполнить','When to act')}</h2>
-        ${t.dates.length?t.dates.map(d=>taskDateDetails(d,kinds)).join(''):`<p>${tr('Точный срок в инструкции не указан.','The instructions do not specify an exact time.')}</p>`}
+        ${t.dates.length?t.dates.map(d=>taskDateDetails(d,kinds)).join(''):`<p>${t.process==='invitation'&&t.source_snapshot.some(s=>s.id==='E1'&&s.confidence==='U'&&!s.checked_at)?tr('Срок оформления пока не подтверждён. Уточните его в отделе по работе с иностранными учащимися.','The processing time has not been confirmed. Ask the international student office.'):tr('Точный срок в инструкции не указан.','The instructions do not specify an exact time.')}</p>`}
         </section>`}
         <section class="task-section">${past?'':`<h2>${tr('Что нужно сделать','What to do')}</h2>`}<p class="task-instruction">${esc(taskInstruction(t))}</p>${!past&&content(t.performer_i18n)?`<p class="task-caption">${tr('Кто выполняет','Who acts')}: ${esc(content(t.performer_i18n))}</p>`:''}</section>
         ${past?'':taskSupportingSections(t,true)}
@@ -394,11 +394,18 @@ function eventFormView(type, original = null, candidateId = null) {
     const effective = plan.effective_profile || profile;
     let payload = original?.payload || {};
     let fields = '';
-    if (['entry_recorded', 'reentry_recorded'].includes(type)) {
+    const isEntryEvent = ['entry_recorded', 'reentry_recorded'].includes(type);
+    const eventDates={
+        entry_recorded:['Когда вы въехали в Россию?','When did you enter Russia?'],
+        reentry_recorded:['Когда вы въехали в Россию?','When did you enter Russia?'],
+        medical_completed:['Когда вы прошли медосмотр?','When did you complete the medical examination?'],
+        address_changed:['Когда вы переехали на новое место проживания?','When did you move to your new residence?']
+    };
+    const dateLabel=tr(...(eventDates[type]||['Когда это произошло?','When did it happen?']));
+    const dateHint=isEntryEvent?tr('Дата нужна для плана после этого въезда.','This date is needed for your plan after this entry.'):type==='medical_completed'?tr('Дата нужна для плана следующего медосмотра.','This date is needed to plan your next medical examination.'):type==='address_changed'?tr('Дата нужна для плана по новому месту проживания.','This date is needed for the plan at your new residence.'):'';
+    if (isEntryEvent) {
         fields += selectField('entry_purpose', tr(...fieldLabels.entry_purpose), fieldChoices('entry_purpose'), payload.entry_purpose || 'unknown');
         fields += selectField('visa_regime', tr('Вы въехали по визе или без визы?', 'Did you enter Russia with or without a visa?'), fieldChoices('visa_regime'), payload.visa_regime || effective.visa_regime);
-        const arrival = payload.arrival_at ? new Date(new Date(payload.arrival_at).getTime()+3*60*60*1000).toISOString().slice(0,19) : '';
-        fields += field('arrival_at',tr('Время прибытия (МСК, если известно)','Arrival time (MSK, if known)'),'datetime-local',arrival,'step="1"');
     }
     if (['entry_recorded', 'reentry_recorded', 'address_changed', 'registration_confirmed'].includes(type)) {
         const residence = payload.residence_type || effective.residence_type;
@@ -409,7 +416,7 @@ function eventFormView(type, original = null, candidateId = null) {
     if (type === 'registration_confirmed') fields += field('stay_expiry', tr('Окончание пребывания (если известно)', 'Permitted stay expiry (if known)'), 'date', payload.stay_expiry || '');
     if (type === 'status_changed') fields += selectField('status', tr('Новое основание пребывания', 'New basis for your stay'), fieldChoices('migration_basis'), payload.status || 'unknown');
     if (type === 'enrolment_changed') fields += selectField('status', tr('Новый учебный статус', 'New study status'), [['',tr('Выберите ответ','Choose an answer')],...fieldChoices('study_status').filter(([v])=>v!=='unknown')], payload.status || '').replace('<select ', '<select required ');
-    showDetail(`<h2>${original?tr('Исправить событие: ','Correct event: '):''}${esc(tr(...eventNames[type]))}</h2>${candidateId?`<div class="banner">${tr('Мы подобрали форму по вашему описанию. Проверьте, подходит ли она, и укажите дату и сведения. План изменится после подтверждения.','We chose a form based on your description. Check that it fits and add the date and details. Your plan changes after confirmation.')}</div>`:''}<form id="event-form"><div class="fields">${field('occurred_at',tr('Когда это произошло?','When did it happen?'),'date',original?.occurred_at||'',`required max="${today()}"`)}${fields}</div>${type === "address_changed" ? `<label class="checkbox" data-same-place-row hidden><input type="checkbox" data-same-place>${tr("Подтверждаю переезд на другой адрес того же типа жилья", "I moved to another address with the same residence type")}</label>` : ""}<p class="privacy">${tr('Событие — ваш собственный отчёт. Не вводите номера документов, адрес или результаты медицинских исследований.','This is your own report. Do not enter document numbers, exact addresses or medical results.')}</p><label class="checkbox"><input type="checkbox" required>${tr('Подтверждаю указанное событие, дату и данные','I confirm the event, date and details')}</label><div class="actions"><button class="primary" type="submit">${original?tr('Сохранить исправление','Save correction'):tr('Сохранить событие','Save event')}</button></div></form>`);
+    showDetail(`<h2>${original?tr('Исправить событие: ','Correct event: '):''}${esc(tr(...eventNames[type]))}</h2>${candidateId?`<div class="banner">${tr('Мы подобрали форму по вашему описанию. Проверьте, подходит ли она, и укажите дату и сведения. План изменится после подтверждения.','We chose a form based on your description. Check that it fits and add the date and details. Your plan changes after confirmation.')}</div>`:''}<form id="event-form"><div class="fields">${field('occurred_at',dateLabel,'date',original?.occurred_at||'',`required max="${today()}"${dateHint?' aria-describedby="event-date-hint"':''}`)}${dateHint?`<p id="event-date-hint">${esc(dateHint)}</p>`:''}${fields}</div>${type === "address_changed" ? `<label class="checkbox" data-same-place-row hidden><input type="checkbox" data-same-place>${tr("Подтверждаю переезд на другой адрес того же типа жилья", "I moved to another address with the same residence type")}</label>` : ""}<p class="privacy">${tr('Событие — ваш собственный отчёт. Не вводите номера документов, адрес или результаты медицинских исследований.','This is your own report. Do not enter document numbers, exact addresses or medical results.')}</p><label class="checkbox"><input type="checkbox" required>${tr('Подтверждаю указанное событие, дату и данные','I confirm the event, date and details')}</label><div class="actions"><button class="primary" type="submit">${original?tr('Сохранить исправление','Save correction'):tr('Сохранить событие','Save event')}</button></div></form>`);
 
     const form=document.querySelector('#event-form');
     if(type==='address_changed') {
@@ -433,7 +440,9 @@ function eventFormView(type, original = null, candidateId = null) {
         };
         delete p.type;
         delete p.occurred_at;
-        if('arrival_at' in p) {if(p.arrival_at)p.arrival_at += (p.arrival_at.length===16?':00':'')+'+03:00';else delete p.arrival_at;}
+        // This form records entry into Russia only. Preserve an older event's
+        // separately recorded city arrival when correcting its visible fields.
+        if (isEntryEvent && original && 'arrival_at' in payload) p.arrival_at = payload.arrival_at;
         if('stay_expiry' in p && !p.stay_expiry)delete p.stay_expiry;
         if (type === 'address_changed') p.from_residence_type = payload.from_residence_type || effective.residence_type || 'unknown';
         let body = {
