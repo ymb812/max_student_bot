@@ -11,6 +11,7 @@ data/
 .pytest_cache/
 .ruff_cache/
 AGENTS.md
+!/AGENTS.md
 output/
 *.sqlite3
 *.sqlite3-*
