@@ -77,8 +77,19 @@ def shape_task(task, rule, f):
         "registration": ["submitted", "received"], "visa_renewal": ["submitted", "received"],
         "registration_renewal": ["submitted", "received"], "consultation": [], "entry_context": [],
     }[process] + ["question_sent", "clarified"]
-    for key in ("performer_i18n", "expected_result_i18n", "help_i18n"):
+    for key in ("performer_i18n", "expected_result_i18n", "help_i18n", "contact_i18n"):
         task[key] = rule.get(key, {})
+    task["document_instruction_indices"] = rule.get("document_instruction_indices", [])
+    task["document_note_i18n"] = rule.get("document_note_i18n", {})
+    task["contact_note_i18n"] = rule.get("contact_note_i18n", {})
+    if rule.get("renewal_note_i18n"):
+        task["document_guidance_i18n"] = rule["renewal_note_i18n"]
+        if process == "registration_renewal" and f.get("residence_type") == "private":
+            task["document_guidance_i18n"] = rule["private_registration_note_i18n"]
+        elif f.get("visa_regime") == "visa":
+            task["documents_i18n"] = rule["renewal_visa_documents_i18n"]
+            task["document_instruction_indices"] = []
+            task["document_guidance_i18n"] = bi("Список из инструкции ЛЭТИ для визового въезда. Уточните применимость и актуальные требования перед подачей.", "This is LETI’s checklist for visa entry. Confirm applicability and current requirements before submitting.")
     report = f.get("_workflow", {}).get(task["task_key"])
     # M04 is scoped to a residence, its receipt starts a *renewal* cycle.
     if process == "registration":
@@ -158,10 +169,26 @@ def shape_task(task, rule, f):
             actions = ["clarified"] if waiting else ["question_sent"]
         if process == "documents" and task.get("reported_outcome") in ("question", "question_sent", "clarified"):
             actions = ["completed", "question_sent"]
+        if task.get("reported_outcome") == "question_sent":
+            actions = ["clarified"] + [a for a in actions if a not in ("clarified", "question_sent")]
         task["result_actions"] = actions
     if task["workflow_status"] == "waiting":
-        task["waiting_i18n"] = bi("Уточните готовность у стороны, которая приняла запрос или документы, тем способом, который она указала. Получение результата подтвердите отдельно.", "Check readiness with the office or consulate that accepted your request or documents, using its stated channel. Confirm receipt separately.")
+        task["waiting_i18n"] = waiting_copy(process, task.get("reported_outcome"), f)
     return task
+
+
+def waiting_copy(process, outcome, facts):
+    if outcome == "question_sent":
+        return bi("Ответ можно отметить в этой задаче.", "You can record the answer in this task.")
+    if process == "invitation":
+        return bi("Приглашение придёт на e-mail из анкеты. По вопросам готовности обратитесь в отдел регистраций и виз.", "Your invitation will be sent to the email in your application. Contact the registration and visa office to check its status.") if facts["university_id"] == "sutd" else bi("Способ и срок получения уточните в отделе по работе с иностранными учащимися ЛЭТИ.", "Ask LETI’s international student office when and how you will receive your invitation.")
+    if process == "initial_visa":
+        return bi("Проверяйте готовность способом, который вам сообщили при подаче заявления.", "Use the status-check method you were given when you applied.")
+    if process == "visa_renewal":
+        return bi("Уточните готовность визы в отделе, куда передали документы.", "Ask the office that received your documents about the visa.")
+    if "registration" in process:
+        return bi("Уточните готовность и способ получения у того, кому передали документы для регистрации.", "Ask whoever received your registration documents when and how to collect the result.")
+    return bi("Ответ можно отметить в этой задаче.", "You can record the answer in this task.")
 
 
 def rank_tasks(tasks, today):

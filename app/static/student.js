@@ -43,18 +43,18 @@ const statuses = {
     completed: ['Выполнено', 'Completed']
 };
 const eventNames = {
-    entry_recorded: ['Я въехал в Россию', 'I entered Russia'],
-    reentry_recorded: ['Я вернулся в Россию', 'I re-entered Russia'],
-    address_changed: ['Я сменил адрес', 'I changed residence'],
-    hotel_stay_started: ['Я заселился в гостиницу', 'I checked into a hotel'],
-    hotel_stay_ended: ['Я выехал из гостиницы', 'I left a hotel'],
-    visa_issued: ['Я получил новую визу', 'I received a new visa'],
-    registration_confirmed: ['У меня новая регистрация', 'I have a new registration'],
-    medical_completed: ['Я прошёл медосмотр', 'I completed a medical examination'],
-    fingerprinting_completed: ['Я прошёл дактилоскопию', 'I completed fingerprinting'],
-    passport_replaced: ['Я заменил паспорт', 'I replaced my passport'],
-    status_changed: ['Изменилось основание пребывания', 'My migration status changed'],
-    enrolment_changed: ['Изменился учебный статус', 'My study status changed']
+    entry_recorded: ['Въезд в Россию', 'Entry into Russia'],
+    reentry_recorded: ['Повторный въезд в Россию', 'Re-entry into Russia'],
+    address_changed: ['Переезд на другое место проживания', 'Change of residence'],
+    hotel_stay_started: ['Заселение в гостиницу', 'Hotel check-in'],
+    hotel_stay_ended: ['Выезд из гостиницы', 'Hotel check-out'],
+    visa_issued: ['Получение визы', 'Visa received'],
+    registration_confirmed: ['Получение регистрации', 'Registration received'],
+    medical_completed: ['Прохождение медосмотра', 'Medical examination completed'],
+    fingerprinting_completed: ['Прохождение дактилоскопии', 'Fingerprinting completed'],
+    passport_replaced: ['Замена паспорта', 'Passport replaced'],
+    status_changed: ['Изменение основания пребывания', 'Basis for stay changed'],
+    enrolment_changed: ['Изменение учебного статуса', 'Study status changed']
 };
 
 function toast(msg) {
@@ -88,8 +88,9 @@ async function api(path, method = 'GET', body, credential = token) {
                 renderAuthStatus();
             }
         }
-        const error = Error(typeof e.detail === 'string' ? e.detail : tr('Проверьте поля формы. Данные не сохранены.', 'Check the form fields. Data was not saved.'));
+        const error = Error(apiErrorMessage(e,response.status));
         error.status = response.status;
+        error.code = e.error_code || e.errors?.[0]?.code;
         throw error
     }
     return response.json()
@@ -103,12 +104,18 @@ function guard(fn) {
         try {
             await fn(e)
         } catch (err) {
-            const message = err.name === 'TimeoutError' || err instanceof TypeError ? tr('Не удалось получить ответ. Проверьте соединение и повторите попытку.', 'No response received. Check your connection and try again.') : err.message;
-            const form = b?.closest('form') || root.querySelector('#event-form,#field-form,#onboard-form,#result-form');
+            const message = err.name === 'TimeoutError' || err instanceof TypeError ? tr('Не удалось получить подтверждение сохранения. Проверьте соединение и повторите попытку.', 'We could not confirm saving. Check your connection and try again.') : err.message;
+            const form = b?.closest('form') || root.querySelector('#event-form,#field-form,#onboard-form,#result-form,#event-parser-form');
             if (form) {
                 let error = form.querySelector('.form-error');
-                if (!error) {error = document.createElement('p'); error.className='form-error'; error.setAttribute('role','alert'); form.append(error);}
+                if (!error) {error = document.createElement('div'); error.className='form-error'; error.setAttribute('role','alert'); form.append(error);}
                 error.textContent = message;
+                const recovery=errorRecovery(err.code);
+                if(recovery) {
+                    const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=recovery.label;
+                    button.onclick=()=>confirmLeave(()=>guard(async()=>{await refreshSnapshot();navigate({name:recovery.name});})());
+                    error.append(document.createElement('br'),button);
+                }
             }
             toast(message)
         } finally {
@@ -163,12 +170,7 @@ function field(name, label, type = 'text', value = '', extra = '') {
 }
 
 function residenceOptions(selected) {
-    return [
-        ['unknown', tr('Не знаю', 'Not sure')],
-        ['dorm', tr('Общежитие', 'Dormitory')],
-        ['private', tr('Частный адрес', 'Private accommodation')],
-        ['other', tr('Другое', 'Other')]
-    ].map(([v, l]) => option(v, l, selected)).join('')
+    return fieldChoices('residence_type').map(([v,l])=>option(v,l,selected)).join('');
 }
 
 function onboardingStorageKey() { return 'ryadom_onboarding_' + (onboardingScope || token); }
@@ -203,7 +205,7 @@ function taskTiming(t) {
 
 function taskDate(t) {
     const timing = taskTiming(t);
-    return timing?.computed_at ? formatDate(timing.computed_at) : timing ? tr('Срок уточнить в офисе', 'Confirm timing with office') : tr('Без отдельного срока', 'No separate deadline');
+    return timing?.computed_at ? formatDate(timing.computed_at) : timing ? timingExplanation(timing) : tr('Без отдельного срока', 'No separate deadline');
 }
 
 function taskCategory(t) {
@@ -219,10 +221,10 @@ function taskCategory(t) {
 
 function shortTiming(timing) {
     if (!timing) return '';
+    if(timing.prototype_assumption&&timing.kind==='legal_deadline')return tr('Выполнить до','Complete by');
     if (timing.kind === 'preparation_start') return tr('Начало подготовки', 'Start preparing');
     if (timing.required_or_recommended === 'recommended_by_university') return tr('Рекомендация вуза', 'University recommendation');
-    if (timing.kind === 'preparation_start') return tr('Начало подготовки', 'Start preparing');
-    if (timing.kind === 'legal_deadline') return tr('Государственный срок', 'Statutory deadline');
+    if (timing.kind === 'legal_deadline') return tr('Общий срок из источника', 'General timing from the source');
     return tr('Обращение в вуз', 'University submission');
 }
 
@@ -254,7 +256,7 @@ function timingLabel(v) {
         required: tr('Обязательный по инструкции срок', 'Required by the instruction'),
         recommended_by_university: tr('Рекомендация вуза', 'University recommendation'),
         document_fact: tr('Дата из документа', 'Document date'),
-        unspecified: tr('Характер срока уточнить в офисе', 'Confirm timing requirements with the office'),
+        unspecified: tr('Уточните в отделе, обязателен ли этот срок или это рекомендация', 'Ask the office whether this timing is required or recommended'),
         product_sorting: tr('Совет приложения для подготовки', 'Preparation suggestion from the app')
     })[v] || v
 }
@@ -275,41 +277,90 @@ function confidenceLabel(v) {
     })[v] || v
 }
 
+function taskContactLines(contact) {
+    return String(contact||'').split(/\s*·\s*|\n+/).filter(Boolean).map(line=>{
+        const parts=line.split(/(https?:\/\/[^\s<>]+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi);
+        return `<p>${parts.map(part=>/^https?:\/\//i.test(part)?`<a href="${esc(part)}" target="_blank" rel="noopener noreferrer">${esc(part)}</a>`:/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(part)?`<a href="mailto:${esc(part)}">${esc(part)}</a>`:esc(part)).join('')}</p>`;
+    }).join('');
+}
+function taskDateDetails(d,kinds) {
+    const expiry=d.kind==='document_expiry';
+    const recommended=d.required_or_recommended==='recommended_by_university';
+    const expiryTitles={visa_expiry:['Виза действует до','Visa valid until'],registration_expiry:['Регистрация действует до','Registration valid until'],stay_expiry:['Разрешённое пребывание до','Permitted stay until']};
+    const title=expiry?tr(...(expiryTitles[d.anchor_field]||['Документ действует до','Document valid until'])):d.prototype_assumption&&d.kind==='legal_deadline'?tr('Выполнить до','Complete by'):recommended&&d.kind==='university_submission_deadline'?tr('Рекомендуемый срок обращения','Recommended time to contact the office'):tr(...(kinds[d.kind]||['Срок','Timing']));
+    // Remove only the redundant recommendation prefix; retain the source interval and conditions.
+    const literal=content(d.literal).replace(recommended?/^(?:Рекомендуемый вузом срок(?: обращения)?: |University recommendation: )/:/^$/, '');
+    const value=d.computed_at?`<p class="task-date-value">${formatDate(d.computed_at)}</p>`:d.literal_explains_calculation&&!expiry?'':`<p>${expiry?tr('Дата окончания не указана. Уточните её по документу.','Expiry date is unknown. Check your document.'):esc(timingExplanation(d))}</p>`;
+    const qualification=!expiry&&d.required_or_recommended==='unspecified'?`<p>${tr('Уточните в вузе, обязателен ли этот срок.','Check with the university whether this deadline is mandatory.')}</p>`:!expiry&&d.required_or_recommended==='product_sorting'?`<p>${tr('Ориентир для подготовки, предложенный приложением.','A preparation guide suggested by the app.')}</p>`:'';
+    return `<div class="task-date-row"><h3>${title}</h3>${d.computed_at?value:''}${expiry?'':`<p>${esc(literal)}</p>`}${d.computed_at?'':value}${qualification}</div>`;
+}
+function sourceCard(s) {
+    return `<article class="reference-source"><a class="reference-title" href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(sourceTitle(s))}</a>${sourceSection(s)?`<p><strong>${tr('Где искать','Where to look')}</strong><br>${esc(sourceSection(s))}</p>`:''}${s.purpose_i18n?`<p>${esc(content(s.purpose_i18n))}</p>`:''}<dl class="reference-facts"><dt>${tr('Тип источника','Source type')}</dt><dd>${esc(sourceLabel(s.source_type))}</dd><dt>${tr('Содержание источника проверяли','Source content checked')}</dt><dd>${sourceCheckedDate(s)}</dd>${s.navigation_verified&&s.navigation_checked_at?`<dt>${tr('Раздел на странице проверяли','Page section checked')}</dt><dd>${formatDate(s.navigation_checked_at)}</dd>`:''}</dl>${s.verification_note_i18n?`<p>${esc(content(s.verification_note_i18n))}</p>`:''}</article>`;
+}
+function taskSupportingSections(t, showExpected=false) {
+    const documents=content(t.documents_i18n)||[];
+    const expected=(content(t.expected_result_i18n)||'').trim();
+    const expectedSentence=expected&&!/[.!?…]$/.test(expected)?expected+'.':expected;
+    return `        ${documents.length?`<section class="task-section"><h2>${tr('Что подготовить','What to prepare')}</h2>${documentListView(t)}${t.missing_documents?.length?`<div class="task-remaining"><h3>${tr('Осталось передать','Still to submit')}</h3><ul>${t.missing_documents.map(i=>`<li>${esc(documents[i])}</li>`).join('')}</ul></div>`:''}</section>`:''}
+        ${t.contact?`<section class="task-section"><h2>${t.process==='documents'?tr('Куда обратиться за помощью','Where to get help'):tr('Куда обратиться','Where to go')}</h2><div class="task-contact">${taskContactLines(content(t.contact_i18n)||t.contact)}</div>${content(t.contact_note_i18n)?`<p>${esc(content(t.contact_note_i18n))}</p>`:''}</section>`:''}
+        ${showExpected&&expected?`<section class="task-section task-expected"><h2>${tr('Результат этого шага','Expected outcome')}</h2><p>${esc(expectedSentence)}</p></section>`:''}
+        ${t.help_i18n?`<section class="task-section task-help"><h2>${tr('Если возникла проблема','If you need help')}</h2><p>${esc(content(t.help_i18n))}</p></section>`:''}
+`;
+}
+function taskInformationView(key) {
+    const t=route.snapshot||plan.tasks.find(t=>t.task_key===key);
+    if(!t)return;
+    showDetail(`<div class="task-information">${heading(tr('Об этой рекомендации','About this recommendation'))}<p class="task-information-subtitle">${esc(content(t.title_i18n))}</p>
+        ${t.prototype_timing?`<p>${tr('В прототипе срок рассчитан по демонстрационной модели.','This prototype uses a demonstration timing model.')}</p>`:''}
+        <section class="task-section"><h2>${tr('Почему она в плане','Why it is in your plan')}</h2><p>${esc(content(t.eligibility_reason))}</p>${t.availability==='past'&&t.availability_reason_i18n?`<p>${esc(content(t.availability_reason_i18n))}</p>`:''}</section>
+        ${taskInstruction(t)!==content(t.action_i18n)?`<section class="task-section"><h2>${tr('Порядок действий','Procedure')}</h2><p class="reference-instruction">${esc(content(t.action_i18n))}</p>${content(t.performer_i18n)?`<p>${esc(content(t.performer_i18n))}</p>`:''}</section>`:''}
+        ${t.availability==='past'?taskSupportingSections(t):''}
+        <section class="task-section"><h2>${tr('Источники','Sources')}</h2>${t.source_snapshot.map(sourceCard).join('')}</section>
+        <section class="task-section"><h2>${tr('Что проверено','Verification details')}</h2><dl class="reference-facts"><dt>${tr('Что говорит источник','What the source confirms')}</dt><dd>${esc(confidenceLabel(t.norm_confidence))}</dd><dt>${tr('Применимость к вам','Applicability to you')}</dt><dd>${esc(confidenceLabel(['conditional','needs_review','requires_recheck'].includes(t.engine_status)?'C':t.eligibility_confidence))}</dd><dt>${tr('Проверен ли расчёт даты','Date calculation verified')}</dt><dd>${esc(confidenceLabel(t.formula_confidence))}</dd><dt>${tr('Версия правила','Rule version')}</dt><dd>${esc(t.rule_version)}</dd></dl></section></div>`);
+}
 function taskDetailView(key) {
     const t = route.snapshot || plan.tasks.find(t => t.task_key === key);
     if (!t) return;
     const kinds = {
-        legal_deadline: ['Государственный срок', 'Statutory deadline'],
-        university_submission_deadline: ['Обращение в вуз', 'University submission'],
+        legal_deadline: ['Общий срок из источника', 'General timing from the source'],
+        university_submission_deadline: ['Когда обратиться в вуз', 'When to contact the office'],
         preparation_start: ['Начало подготовки', 'Preparation start'],
         document_expiry: ['Окончание документа', 'Document expiry']
     };
+    const past=t.availability==='past';
     const fieldName = k => fieldLabels[k] ? tr(...fieldLabels[k]) : k;
     const statusLocked = !!t.process || t.engine_status !== 'actionable' || t.completion_basis === 'reported_fact';
-    showDetail(`<div class="eyebrow">${esc(taskCategory(t))} · ${tr('Версия', 'Version')} ${t.rule_version}</div>
-        <h2>${esc(content(t.title_i18n))}</h2>
+    const documents=content(t.documents_i18n)||[], missing=t.missing_fields||[];
+    const showState=t.engine_status!=='actionable'||t.user_status!=='not_started'||['waiting','partial','needs_help'].includes(t.workflow_status)||['future','past'].includes(t.availability);
+    const resultControls=t.process?workflowControls(t):statusLocked?`<p>${esc(lockedStatusReason(t))}</p>`:`<div class="status-control" aria-label="${tr('Мой статус','My status')}">${Object.entries(statuses).map(([v,s])=>`<button aria-pressed="${t.user_status===v}" data-status="${v}">${tr(...s)}</button>`).join('')}</div>`;
+    const canReport=!t.process||t.result_actions?.length||t.process==='entry_context'&&t.user_status!=='completed'||t.process==='invitation'&&missing.includes('preparation_state')||t.process==='initial_visa'&&t.availability==='future';
+    showDetail(`<header class="task-heading"><div class="eyebrow">${esc(taskCategory(t))}</div>
+        <h1>${esc(taskDisplayTitle(t))}</h1>${taskContextLabel(t)?`<p class="task-caption">${esc(taskContextLabel(t))}</p>`:''}
+        ${showState?`<p class="task-state">${esc(workflowLabel(t))}</p>`:''}</header>
         ${t.demo_model ? `<div class="banner">${tr('Демонстрационное изменение правила. Не официальное обновление вуза.', 'Demonstration rule change. This is not an official university update.')}</div>` : ''}
-        ${t.engine_status !== 'actionable' ? `<span class="tag review">${tr(...states[t.engine_status])}</span>` : ''}
-        <p class="detail-action">${esc(content(t.action_i18n))}</p>${t.performer_i18n?`<p class="privacy">${esc(content(t.performer_i18n))}</p>`:''}
-        <div class="detail-label">${tr('Мой статус', 'My status')}</div>${t.process ? workflowControls(t) : statusLocked ? `<p class="user-status ${t.user_status}">${tr(...statuses[t.user_status])}</p><p class="privacy">${lockedStatusReason(t)}</p>` : `<div class="status-control" aria-label="${tr('Мой статус', 'My status')}">${Object.entries(statuses).map(([v,s])=>`<button aria-pressed="${t.user_status===v}" data-status="${v}">${tr(...s)}</button>`).join('')}</div>`}
-        <section class="detail-section"><h3 class="detail-label">${tr('Сроки', 'Dates and timing')}</h3><p class="privacy">${tr('Все даты — по московскому времени.', 'All dates use Moscow time.')}</p>
-        ${t.dates.length ? t.dates.map(d=>`<div class="time-row"><strong>${tr(...kinds[d.kind])} · ${d.owner==='university'?tr('Вуз','University'):d.owner==='state'?tr('Государство','State'):tr('Пользователь','User')}</strong><br>${esc(content(d.literal))}<br>${d.computed_at?`<b>${formatDate(d.computed_at)}</b>`:tr('Точная дата не рассчитана','Exact date has not been calculated')} · ${esc(unitLabel(d.unit))}<br>${esc(timingLabel(d.required_or_recommended))}</div>`).join('') : `<p class="detail-text">${tr('Отдельного числового срока у этого шага нет.', 'This task has no separate numeric deadline.')}</p>`}</section>
-        <section class="detail-section"><h3 class="detail-label">${tr('Что подготовить', 'What to prepare')}</h3><ul class="detail-text">${content(t.documents_i18n).map(d=>`<li>${esc(d)}</li>`).join('')}</ul><p class="privacy">${tr('Документы в приложение загружать не нужно.', 'You do not need to upload documents here.')}</p>
-        ${t.expected_result_i18n?`<h3 class="detail-label">${tr('Ожидаемый результат','Expected result')}</h3><p>${esc(content(t.expected_result_i18n))}</p>`:''}${t.help_i18n?`<p class="privacy">${esc(content(t.help_i18n))}</p>`:''}<h3 class="detail-label">${tr('Куда обратиться', 'Where to go')}</h3><p class="detail-text">${esc(t.contact)}</p></section>
-        <details class="disclosure" ${t.missing_fields.length ? 'open' : ''}><summary>${tr('Почему это в моём плане', 'Why this is in my plan')}</summary><p class="detail-text">${esc(content(t.eligibility_reason))}</p>
-        ${t.missing_fields.length ? `<p class="privacy">${tr('Что нужно уточнить', 'What needs clarification')}: ${esc(t.missing_fields.map(fieldName).join(', '))}</p><button class="secondary" id="detail-profile">${tr('Уточнить мои данные', 'Complete my information')}</button>` : ''}</details>
-        <details class="disclosure"><summary>${tr('Источники и проверка', 'Sources and verification')}</summary>${t.source_snapshot.map(s=>`<div class="source"><a href="${esc(s.official_url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>${s.section_label?`<p>${tr('Где искать','Where to look')}: ${esc(s.section_label)}</p>`:''}${s.purpose_i18n?`<p>${esc(content(s.purpose_i18n))}</p>`:''}<br>${esc(sourceLabel(s.source_type))} · ${tr('Проверено','Checked')}: ${formatDate(s.checked_at)}</div>`).join('')}
-        <p class="privacy">${tr('Подтверждение нормы', 'Norm verification')}: ${esc(confidenceLabel(t.norm_confidence))}<br>${tr('Применимость к вам', 'Applicability to you')}: ${esc(confidenceLabel(t.eligibility_confidence))}<br>${tr('Формула срока', 'Timing formula')}: ${esc(confidenceLabel(t.formula_confidence))}</p></details>
-        ${!statusLocked && t.user_status !== 'completed' ? `<button class="primary wide" data-status="completed">${t.family === 'M07' ? tr('Отметить, что передал(а) документы', 'Mark documents as submitted') : tr('Отметить как выполненное', 'Mark as completed')}</button>` : ''}
+        ${!past&&(t.availability_reason_i18n||t.waiting_i18n)?`<div class="task-context">${[...new Set([content(t.availability_reason_i18n),content(t.waiting_i18n)].filter(Boolean))].map(text=>`<p>${esc(text)}</p>`).join('')}</div>`:''}
+        ${!past&&(missing.length||t.engine_status==='needs_review')?`<section class="task-attention"><h2>${tr('Что нужно уточнить','What needs clarification')}</h2><p>${esc(content(t.eligibility_reason))}</p>${missing.length?`<p>${esc(missing.map(fieldName).join(', '))}</p><button class="secondary wide" id="detail-profile">${t.engine_status==='conditional'&&missing.length&&missing.every(k=>editableFields().includes(k))?tr('Дополнить данные','Complete information'):tr('Как уточнить в отделе','How to check with the office')}</button>`:''}</section>`:''}
+        ${past?'':`<section class="task-section ${t.dates.length?'task-timing':'task-no-date'}"><h2>${tr('Когда выполнить','When to act')}</h2>
+        ${t.dates.length?t.dates.map(d=>taskDateDetails(d,kinds)).join(''):`<p>${tr('Точный срок в инструкции не указан.','The instructions do not specify an exact time.')}</p>`}
+        </section>`}
+        <section class="task-section">${past?'':`<h2>${tr('Что нужно сделать','What to do')}</h2>`}<p class="task-instruction">${esc(taskInstruction(t))}</p>${!past&&content(t.performer_i18n)?`<p class="task-caption">${tr('Кто выполняет','Who acts')}: ${esc(content(t.performer_i18n))}</p>`:''}</section>
+        ${past?'':taskSupportingSections(t,true)}
+        ${canReport||t.completion_basis==='reported_fact'||t.engine_status==='superseded'||t.engine_status==='requires_recheck'?`<section class="task-section task-result"><h2>${canReport?tr('Сообщить результат','Report a result'):tr('Сохранённый результат','Recorded result')}</h2>
+        ${resultControls}
         ${t.completion_basis === 'reported_fact' || t.engine_status === 'superseded' ? `<button class="secondary wide" id="detail-history">${tr('Открыть историю','Open history')}</button>` : ''}
         ${!statusLocked && t.user_status === 'completed' && RoadmapView.hero(plan.tasks) ? `<button class="primary wide" id="detail-next">${tr('Следующее действие','Next action')}</button>` : ''}
         ${t.engine_status === 'requires_recheck' ? `<button class="primary wide" id="detail-confirm-event">${tr('Сообщить новое подтверждение', 'Record new confirmation')}</button>` : ''}
-        <p class="privacy">${t.process?tr('Результат сообщён вами; сервис не проверяет документ. Подача и получение сохраняются отдельно.','Results are self-reported; the service does not verify documents. Submission and receipt are recorded separately.'):tr('«Выполнено» — ваша отметка о действии. Получение нового документа сообщите отдельным событием.', '“Completed” is your report of an action. Record a newly issued document as a separate event.')}</p>`);
+        </section>`:''}
+        <button class="task-reference-link" id="detail-reference"><span class="task-reference-icon">${icon('info',22)}</span><span><strong>${tr('Об этой рекомендации','About this recommendation')}</strong><small>${tr('Почему она в плане и на какие источники опирается','Why it is in your plan and the sources behind it')}</small></span>${icon('chevron',18)}</button>
+        `);
+    document.querySelector('#detail-reference').onclick=()=>navigate({name:'task-info',key:t.task_key,...(route.snapshot?{snapshot:route.snapshot}:{})});
     document.querySelector('#detail-history')?.addEventListener('click',()=>navigate({name:'history'}));
     document.querySelector('#detail-next')?.addEventListener('click',()=>taskDetail(RoadmapView.hero(plan.tasks).task_key));
     document.querySelector('#detail-confirm-event')?.addEventListener('click', () => eventForm(t.family==='M04'||t.family==='M08'?'registration_confirmed':t.family==='M07'?'visa_issued':'address_changed'));
     document.querySelector('#detail-profile')?.addEventListener('click', () => resolveTask(t));
     wireWorkflow(t);
+    document.querySelector('[data-medical-completed]')?.addEventListener('click',()=>eventForm('medical_completed'));
+    document.querySelector('[data-fingerprinting-completed]')?.addEventListener('click',()=>eventForm('fingerprinting_completed'));
     document.querySelectorAll('[data-status]').forEach(b => b.onclick = guard(async () => {
         await api('/me/tasks/' + encodeURIComponent(key) + '/status', 'PATCH', {status: b.dataset.status});
         plan = await api('/me/roadmap');
@@ -320,15 +371,16 @@ function taskDetailView(key) {
 const fieldLabels = {
     age_band: ['Возраст', 'Age'],
     citizenship: ['Гражданство', 'Citizenship'],
-    migration_basis: ['Основание пребывания', 'Migration grounds'],
+    migration_basis: ['Основание пребывания', 'Basis for your stay'],
     study_status: ['Учебный статус', 'Study status'],
-    entry_purpose: ['Цель въезда', 'Entry purpose'],
-    stay_over_90_days: ['Пребывание >90 дней', 'Stay >90 days'],
-    fingerprinting_completed: ['Дактилоскопия', 'Fingerprinting'],
+    entry_purpose: ['Какая цель указана в документах о въезде?', 'What purpose is recorded in your entry documents?'],
+    stay_over_90_days: ['Планируете находиться в России больше 90 дней?', 'Do you plan to stay in Russia for more than 90 days?'],
+    fingerprinting_completed: ['Вы уже проходили дактилоскопию — сдавали отпечатки пальцев?', 'Have you already had your fingerprints taken?'],
     visa_expiry: ['Окончание визы', 'Visa expiry'],
-    visa_regime: ['Режим въезда', 'Entry regime'],
+    visa_regime: ['Въезд по визе или без визы', 'Visa or visa-free entry'],
     registration_expiry: ['Окончание регистрации', 'Registration expiry'],
     residence_type: ['Тип жилья', 'Residence'],
+    host_and_registration_effect: ['Кто оформляет регистрацию в вашем случае и нужно ли обновить прежние документы', 'Who arranges registration in your case and whether previous documents need updating'],
     support_envelope: ['Категория вне автоматической поддержки', 'Category outside automatic support'],
     country_exemptions_and_legal_applicability: ['Договоры, исключения и применимость', 'Treaties, exemptions and applicability'],
     event_legal_effect: ['Правовой эффект события', 'Legal effect']
@@ -343,51 +395,39 @@ function eventFormView(type, original = null, candidateId = null) {
     let payload = original?.payload || {};
     let fields = '';
     if (['entry_recorded', 'reentry_recorded'].includes(type)) {
-        fields += selectField('entry_purpose', tr('Цель въезда', 'Entry purpose'), [
-            ['unknown', tr('Не знаю', 'Not sure')],
-            ['study', tr('Учёба', 'Study')],
-            ['other', tr('Другая', 'Other')]
-        ], payload.entry_purpose || 'unknown');
-        fields += selectField('visa_regime', tr('Режим въезда', 'Entry regime'), [
-            ['unknown', tr('Не знаю', 'Not sure')],
-            ['visa', tr('По визе', 'Visa')],
-            ['visa_free', tr('Безвизовый', 'Visa-free')]
-        ], payload.visa_regime || effective.visa_regime)
+        fields += selectField('entry_purpose', tr(...fieldLabels.entry_purpose), fieldChoices('entry_purpose'), payload.entry_purpose || 'unknown');
+        fields += selectField('visa_regime', tr('Вы въехали по визе или без визы?', 'Did you enter Russia with or without a visa?'), fieldChoices('visa_regime'), payload.visa_regime || effective.visa_regime);
         const arrival = payload.arrival_at ? new Date(new Date(payload.arrival_at).getTime()+3*60*60*1000).toISOString().slice(0,19) : '';
         fields += field('arrival_at',tr('Время прибытия (МСК, если известно)','Arrival time (MSK, if known)'),'datetime-local',arrival,'step="1"');
     }
     if (['entry_recorded', 'reentry_recorded', 'address_changed', 'registration_confirmed'].includes(type)) {
         const residence = payload.residence_type || effective.residence_type;
-        fields += `<label class="field">${tr('Тип жилья','Residence')}<select name="residence_type" required>${!residence || residence==='unknown'?`<option value="" selected disabled>${tr('Выберите тип жилья','Choose residence type')}</option>`:''}${residenceOptions(residence).replace(/<option value="unknown"[^>]*>.*?<\/option>/,'')}</select></label>`;
+        fields += `<label class="field">${type==='address_changed'?tr('Куда вы переехали?','Where have you moved?'):tr('Где вы живёте?','Where do you live?')}<select name="residence_type" required>${!residence || residence==='unknown'?`<option value="" selected disabled>${tr('Выберите тип жилья','Choose residence type')}</option>`:''}${residenceOptions(residence).replace(/<option value="unknown"[^>]*>.*?<\/option>/,'')}</select></label>`;
     }
     if (type === 'visa_issued') fields += field('visa_expiry', tr('Окончание новой визы', 'New visa expiry'), 'date', payload.visa_expiry || '', 'required');
     if (type === 'registration_confirmed') fields += field('registration_expiry', tr('Окончание новой регистрации', 'New registration expiry'), 'date', payload.registration_expiry || '', 'required');
     if (type === 'registration_confirmed') fields += field('stay_expiry', tr('Окончание пребывания (если известно)', 'Permitted stay expiry (if known)'), 'date', payload.stay_expiry || '');
-    if (type === 'status_changed') fields += selectField('status', tr('Новое основание', 'New grounds'), [
-        ['unknown', tr('Не знаю', 'Not sure')],
-        ['study', tr('Учёба', 'Study')],
-        ['rvpo', 'РВПО'],
-        ['rvp', 'РВП'],
-        ['residence_permit', 'ВНЖ']
-    ], payload.status || 'unknown');
-    if (type === 'enrolment_changed') fields += selectField('status', tr('Новый учебный статус', 'New study status'), [
-        ['admitted', tr('Зачислен(а), занятия ещё не начались', 'Admitted, classes not started')],
-        ['active', tr('Учусь', 'Active')],
-        ['leave', tr('Академический отпуск', 'Leave')],
-        ['transferred', tr('Перевод', 'Transfer')],
-        ['expelled', tr('Отчислен', 'Expelled')],
-        ['graduated', tr('Выпуск', 'Graduated')],
-        ['working', tr('Работа', 'Working')]
-    ], payload.status || 'active');
-    showDetail(`<h2>${tr(original?'Исправить событие':'Что изменилось?',original?'Correct an event':'What changed?')}</h2>${candidateId?`<div class="banner">${tr('Предложенная интерпретация. Проверьте тип, выберите точную дату и заполните поля. План изменится только после подтверждения.','Proposed interpretation. Verify the type, choose the exact date and fill in the fields. The roadmap changes only after confirmation.')}</div>`:''}<form id="event-form">${selectField('type',tr('Событие','Event'),Object.entries(eventNames).map(([v,s])=>[v,tr(...s)]),type)}<div class="fields">${field('occurred_at',tr('Когда это произошло?','When did it happen?'),'date',original?.occurred_at||'',`required max="${today()}"`)}${fields}</div>${type === "address_changed" ? `<label class="checkbox"><input type="checkbox" data-same-place>${tr("Переезд в другое место того же типа (если тип жилья не изменился)", "I moved to another place of the same type (if residence type is unchanged)")}</label>` : ""}<p class="privacy">${tr('Событие — ваш собственный отчёт. Не вводите номера документов, адрес или результаты медицинских исследований.','This is your own report. Do not enter document numbers, exact addresses or medical results.')}</p><label class="checkbox"><input type="checkbox" required>${tr('Подтверждаю указанное событие, дату и данные','I confirm the event, date and details')}</label><div class="actions"><button class="primary" type="submit">${tr('Подтвердить и обновить план','Confirm and update roadmap')}</button></div></form>${!original?`<div class="detail-label">${tr('Можно описать событие словами','You can describe the event in words')}</div><textarea id="event-text" maxlength="1500" placeholder="${tr('Например: я переехал. Без личных данных.','For example: I moved. No personal information.')}"></textarea><button class="secondary" id="parse-event">${tr('Предложить форму','Suggest a form')}</button>`:''}`);
-    root.querySelector('[name=type]').disabled = true;
+    if (type === 'status_changed') fields += selectField('status', tr('Новое основание пребывания', 'New basis for your stay'), fieldChoices('migration_basis'), payload.status || 'unknown');
+    if (type === 'enrolment_changed') fields += selectField('status', tr('Новый учебный статус', 'New study status'), [['',tr('Выберите ответ','Choose an answer')],...fieldChoices('study_status').filter(([v])=>v!=='unknown')], payload.status || '').replace('<select ', '<select required ');
+    showDetail(`<h2>${original?tr('Исправить событие: ','Correct event: '):''}${esc(tr(...eventNames[type]))}</h2>${candidateId?`<div class="banner">${tr('Мы подобрали форму по вашему описанию. Проверьте, подходит ли она, и укажите дату и сведения. План изменится после подтверждения.','We chose a form based on your description. Check that it fits and add the date and details. Your plan changes after confirmation.')}</div>`:''}<form id="event-form"><div class="fields">${field('occurred_at',tr('Когда это произошло?','When did it happen?'),'date',original?.occurred_at||'',`required max="${today()}"`)}${fields}</div>${type === "address_changed" ? `<label class="checkbox" data-same-place-row hidden><input type="checkbox" data-same-place>${tr("Подтверждаю переезд на другой адрес того же типа жилья", "I moved to another address with the same residence type")}</label>` : ""}<p class="privacy">${tr('Событие — ваш собственный отчёт. Не вводите номера документов, адрес или результаты медицинских исследований.','This is your own report. Do not enter document numbers, exact addresses or medical results.')}</p><label class="checkbox"><input type="checkbox" required>${tr('Подтверждаю указанное событие, дату и данные','I confirm the event, date and details')}</label><div class="actions"><button class="primary" type="submit">${original?tr('Сохранить исправление','Save correction'):tr('Сохранить событие','Save event')}</button></div></form>`);
+
+    const form=document.querySelector('#event-form');
+    if(type==='address_changed') {
+        const priorResidence=payload.from_residence_type||effective.residence_type;
+        const updateSamePlace=()=>{
+            const row=form.querySelector('[data-same-place-row]'),box=form.querySelector('[data-same-place]');
+            const same=!!priorResidence&&priorResidence!=='unknown'&&form.querySelector('[name=residence_type]').value===priorResidence;
+            row.hidden=!same;box.required=same;if(!same)box.checked=false;
+        };
+        form.addEventListener('input',updateSamePlace);form.addEventListener('change',updateSamePlace);updateSamePlace();
+    }
     const key = route.submissionKey ||= crypto.randomUUID();
     writeLocation(true);
     document.querySelector('#event-form').onsubmit = guard(async e => {
         e.preventDefault();
         if (!e.currentTarget.reportValidity()) return;
         const d = Object.fromEntries(new FormData(e.currentTarget));
-        if (type === 'address_changed' && d.residence_type === effective.residence_type && !e.currentTarget.querySelector('[data-same-place]')?.checked) throw Error(tr('Подтвердите переезд в другое место того же типа.', 'Confirm a move to another place of the same type.'));
+        if (type === 'address_changed' && d.residence_type === (payload.from_residence_type || effective.residence_type) && !e.currentTarget.querySelector('[data-same-place]')?.checked) throw Error(tr('Подтвердите переезд в другое место того же типа.', 'Confirm a move to another place of the same type.'));
         const p = {
             ...d
         };
@@ -426,13 +466,7 @@ function eventFormView(type, original = null, candidateId = null) {
         navigate({name: 'result', eventId: saved.event_id, revision: saved.revision_id, reason: original ? 'event_corrected' : type}, true);
         toast(tr('Событие сохранено. План обновлён.', 'Event saved. Roadmap updated.'))
     });
-    document.querySelector('#parse-event')?.addEventListener('click', guard(async () => {
-        const r = await api('/me/candidates', 'POST', {
-            text: document.querySelector('#event-text').value
-        });
-        if (r.candidate) eventForm(r.candidate.type, null, r.candidate_id);
-        else toast(tr('Не удалось однозначно определить событие. Выберите тип в форме.', 'Could not identify a single event. Choose the type in the form.'))
-    }))
+
 }
 function reasonLabel(r) {
     const resultReasons={onboarding_confirmed:['Начальные сведения подтверждены','Initial information confirmed'],result_reported:['Результат сохранён','Result saved'],result_corrected:['Результат исправлен','Result corrected'],result_retracted:['Результат отменён','Result retracted']};

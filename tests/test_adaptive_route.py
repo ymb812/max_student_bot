@@ -75,6 +75,19 @@ def test_visa_ready_does_not_invent_invitation_and_visa_free(client):
     assert task(client,free,'trip')['engine_status'] == 'actionable'
 
 
+def test_entry_content_and_office_source_match_the_action():
+    rules = seed_rules()
+    for tenant in ('sutd', 'leti'):
+        entry = next(r for r in rules if r['rule_id'] == f'{tenant}.M02.entry')
+        assert entry['documents_i18n']['ru'] == [
+            'Документ с отметкой о фактической дате въезда',
+            'Миграционная карта с целью въезда, если предусмотрена']
+        assert 'application' not in ' '.join(entry['documents_i18n']['en']).lower()
+    office = next(r for r in rules if r['rule_id'] == 'sutd.M03')
+    source = next(s for s in office['source_snapshot'] if s['id'] == 'S1')
+    assert source['section_label'] == 'Миграционный учет'
+
+
 @pytest.mark.parametrize('unknown_date', [True,False])
 def test_late_entry_preserves_results_and_unknown_expiry(client, unknown_date):
     h, body = start(client, profile=dict(arrival_status='arrived',entry_at=None if unknown_date else str(moscow_today()),entry_purpose='study',residence_type='dorm'),office_package='completed',registration='received')
@@ -169,7 +182,9 @@ def test_sources_and_demo_units_preserve_original_and_no_fake_date(client):
     assert next(r for r in rules if r['rule_id']=='leti.M03')['deadline_specs'][0]['unit']=='hours'
     h,_=student(client)
     assert all(d['computed_at'] is None for t in plan(client,h)['tasks'] for d in t['dates'] if d['unit']=='working')
-    assert all(any(s.get('section_label') for s in r['source_snapshot']) for r in rules)
+    # A failed source check must be disclosed, not replaced by a fabricated section.
+    assert all(any(s.get('section_label') or s.get('verification_note_i18n') for s in r['source_snapshot']) for r in rules)
+    assert all(s.get('section_label') and s.get('navigation_checked_at') for r in rules for s in r['source_snapshot'] if s.get('navigation_verified'))
 
 
 def test_results_are_owned_and_deleted_with_profile(client):

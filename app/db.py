@@ -8,9 +8,14 @@ def dumps(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+class Connection(sqlite3.Connection):
+    prototype_timing = False
+
+
 class Database:
-    def __init__(self, path):
+    def __init__(self, path, *, prototype_timing=False):
         self.path = path
+        self.prototype_timing = prototype_timing
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with self.transaction() as db:
             db.executescript("""
@@ -60,7 +65,8 @@ class Database:
 
     @contextmanager
     def transaction(self):
-        conn = sqlite3.connect(self.path, timeout=30)
+        conn = sqlite3.connect(self.path, timeout=30, factory=Connection)
+        conn.prototype_timing = self.prototype_timing
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")

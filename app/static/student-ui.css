@@ -47,6 +47,11 @@
 .hero-card h1 { margin:13px 0; max-width:100%; font-size:26px; }
 .hero-card p { font-size:14px; color:#e7eeff; }
 .hero-card .primary { background:white; color:var(--brand); border-color:white; box-shadow:none; }
+.hero-compact { padding:17px 18px; border-radius:20px; }
+.hero-compact h1 { font-size:22px; line-height:1.25; margin:0 0 12px; }
+.hero-compact .primary { justify-content:center; text-align:center; min-height:48px; margin-top:14px; padding:12px 16px; font-weight:600; }
+.hero-compact p { font-size:14px; margin:8px 0; }
+.hero-compact .deadline-line { font-size:13px; margin:8px 0; }
 .student-app .hero-card .primary:hover { background:#eef3ff; }
 .student-app .hero-card .recheck { color:#fff2cb; }
 .deadline-line { display:flex; gap:9px; align-items:flex-start; font-size:13px; color:#e7eeff; line-height:1.5; margin:8px 0; }
@@ -140,6 +145,62 @@
 .student-app .detail-action { font-size:15px; color:#5c6d90; }
 .student-app .detail-text { font-size:14px; line-height:1.65; }
 .student-app .time-row { border-radius:11px; background:#f3f8ff; border:0; padding:12px; font-size:13px; line-height:1.65; }
+/* Detailed actions share one reading column; only timing, contacts and alerts use surfaces. */
+.stage-summary .progress-label { margin:5px 0; color:var(--muted); }
+.stage-group { margin-top:28px; }
+.student-app .stage-group h2 { margin:0 0 12px; font-size:18px; letter-spacing:-.3px; }
+.stage-group .task-stack { margin-top:0; }
+.completed-tasks .compact-task { background:transparent; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:12px 0; margin:0; }
+.completed-tasks .tile-icon { width:30px; height:30px; border-radius:9px; background:transparent; }
+.completed-tasks .compact-task strong { font-weight:500; }
+.task-heading h1 { margin:9px 0 16px; font-size:26px; }
+.task-heading .eyebrow { font-size:13px; }
+.task-state { margin:0 0 16px; color:var(--brand); font-weight:600; }
+.task-context,.task-attention { margin:16px 0; padding:16px; background:#edf3ff; border-radius:14px; }
+.task-attention { background:#fff5e3; }
+.student-app .task-attention h2 { margin:0 0 8px; font-size:17px; }
+.task-context p,.task-attention p { margin:0 0 8px; }
+.task-context p:last-child,.task-attention p:last-child { margin-bottom:0; }
+.task-section { margin:28px 0 0; }
+.student-app .task-section h2 { margin:0 0 12px; font-size:19px; letter-spacing:-.3px; }
+.student-app .task-section h3 { margin:16px 0 6px; font-size:15px; font-weight:600; letter-spacing:0; }
+.task-section p { margin:8px 0; font-size:15px; line-height:1.65; }
+.task-section .task-caption,.task-detail .task-caption { font-size:13px; color:var(--muted); line-height:1.55; }
+.task-instruction { white-space:pre-line; }
+.task-timing { background:#edf3ff; padding:16px; border-radius:14px; margin-top:20px; }
+.task-no-date { margin-top:18px; color:var(--muted); }
+.student-app .task-no-date h2 { display:inline; font-size:14px; margin:0; letter-spacing:0; }
+.task-no-date h2:after { content:': '; }
+.task-no-date p { display:inline; font-size:14px; }
+.task-date-row+.task-date-row { border-top:1px solid #d7e2f4; margin-top:16px; padding-top:2px; }
+.task-date-row:first-of-type h3 { margin-top:0; }
+.task-date-row .task-date-value { font-weight:650; font-size:17px; }
+.task-documents,.task-remaining ul { padding-left:20px; margin:0; }
+.task-documents li,.task-remaining li { margin:10px 0; font-size:15px; line-height:1.6; }
+.task-remaining { margin-top:18px; }
+.task-contact { background:white; border:1px solid var(--line); border-radius:14px; padding:12px 16px; overflow-wrap:anywhere; }
+.task-contact p:first-child { font-weight:600; }
+.task-contact a { display:inline-block; padding:10px 0; min-height:44px; }
+.task-result { border-top:1px solid var(--line); padding-top:24px; }
+.task-detail .workflow-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; margin:0; }
+.task-detail .workflow-actions:empty { display:none; }
+.task-detail .workflow-actions button { width:100%; white-space:normal; line-height:1.45; }
+.task-detail .user-status:before { content:none; }
+.task-detail .disclosure p { font-size:14px; line-height:1.6; }
+.task-detail .disclosure { margin-top:24px; }
+.task-reference-link { display:flex; align-items:center; gap:12px; width:100%; margin:26px 0 0; padding:16px 0; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent; text-align:left; color:var(--ink); }
+.task-reference-icon { display:flex; color:var(--muted); flex-shrink:0; }
+.task-reference-link>span:nth-child(2) { flex:1; min-width:0; }
+.task-reference-link strong { display:block; font-size:15px; font-weight:600; }
+.task-reference-link small { display:block; margin-top:4px; color:var(--muted); font-size:13px; line-height:1.5; }
+.task-reference-link>svg { flex-shrink:0; color:var(--muted); }
+.task-information-subtitle { color:var(--muted); margin-top:-10px; }
+.reference-source { padding:18px 0; border-top:1px solid var(--line); }
+.reference-source:first-of-type { border-top:0; padding-top:0; }
+.reference-title { display:flex; align-items:center; min-height:44px; font-weight:600; font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
+.reference-facts { margin:16px 0 0; font-size:14px; }
+.reference-facts dt { color:var(--muted); margin-top:12px; font-size:13px; }
+.reference-facts dd { margin:3px 0 0; overflow-wrap:anywhere; }
 .student-app .status-control { display:flex; flex-wrap:wrap; gap:5px; }
 .student-app .status-control button { flex:1; min-height:44px; padding:10px; font-size:12px; border-radius:10px; }
 .is-onboarding .screen { display:flex; flex-direction:column; padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
@@ -173,6 +234,21 @@
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .sheet-language { display:flex; padding:0 20px 8px 0; }
 .later-card { display:flex; align-items:center; gap:12px; width:100%; padding:15px 14px; border:1px solid var(--line); border-radius:15px; background:white; margin:17px 0; text-align:left; }
+.data-summary { display:flex; align-items:center; gap:12px; width:100%; padding:13px 14px; margin:18px 0 8px; border:1px solid var(--line); border-radius:14px; background:white; text-align:left; }
+.data-summary>span:first-child { flex:1; min-width:0; }
+.data-summary strong,.data-summary small { display:block; }
+.data-summary strong { display:flex; align-items:center; gap:8px; font-size:15px; line-height:1.45; }
+.data-count { flex-shrink:0; min-width:22px; padding:1px 5px; border-radius:7px; background:#edf3ff; color:#3155a5; font-size:12px; text-align:center; }
+.data-summary small { margin-top:4px; color:var(--muted); font-size:13px; line-height:1.45; }
+.data-summary>svg { flex-shrink:0; }
+.data-group { margin-top:24px; }
+.data-group>h2 { font-size:17px; margin-bottom:12px; }
+.data-question { margin-bottom:12px; }
+.data-question h3 { margin:0 0 10px; font-size:17px; }
+.data-question p { font-size:14px; line-height:1.55; overflow-wrap:anywhere; }
+.data-question .actions { display:flex; flex-wrap:wrap; gap:8px; }
+.data-question .actions button { min-height:44px; flex:1 1 140px; }
+.data-waiting { color:var(--muted); border-left:3px solid var(--line); padding-left:12px; }
 .later-card>span:nth-child(2) { flex:1; min-width:0; }
 .later-card strong,.later-card small { display:block; line-height:1.5; }
 .later-card strong { font-size:14px; }
@@ -283,4 +359,53 @@
 .onboarding-summary dt { font-size: 13px; color: var(--muted, #61708a); }
 .onboarding-summary dd { margin: 6px 0 0; overflow-wrap: anywhere; }
 .workflow-actions { flex-wrap: wrap; }
-.workflow-actions > button { min-height: 44px; flex: 1 1 200px; white-space: normal; }
+.student-app .workflow-actions > button { min-height: 44px; flex: 1 1 200px; white-space: normal; }
+
+/* One aligned, clickable row for short answers and long confirmations. */
+.student-app .checkbox { display:flex; align-items:flex-start; gap:12px; min-height:46px; margin:10px 0; padding:12px; border:1px solid #dbe7fa; border-radius:12px; background:#f8fbff; font-size:14px; line-height:22px; cursor:pointer; }
+.student-app .checkbox:has(input:checked) { background:#edf3ff; border-color:#9db9f4; }
+.student-app input[type=checkbox] { appearance:none; width:22px; min-width:22px; height:22px; min-height:22px; margin:0; padding:0; border:1.5px solid #8b9bb7; border-radius:6px; background:#fff; position:relative; flex:0 0 22px; cursor:pointer; }
+.student-app input[type=checkbox]:checked { background:var(--brand); border-color:var(--brand); }
+.student-app input[type=checkbox]:checked::after { content:''; position:absolute; left:6px; top:2px; width:6px; height:11px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg); }
+.student-app input[type=checkbox]:disabled { opacity:.55; cursor:default; }
+.student-app .date-answer { margin:16px 0; }
+.student-app .date-answer .field { margin:0; }
+.student-app .date-answer .checkbox { margin:8px 0 0; }
+.student-app .field-note { margin:-6px 0 12px; padding:12px 14px; border-left:3px solid #9bb8ec; border-radius:0 10px 10px 0; background:#eef4ff; color:#4b6287; font-size:13px; line-height:1.6; }
+.student-app .onboarding-documents { margin:20px 0 6px; }
+.document-toggle { display:flex; align-items:center; gap:12px; width:100%; padding:14px; border:1px solid #dbe7fa; border-radius:12px; background:#fff; color:var(--brand); text-align:left; font-size:14px; line-height:1.5; }
+.document-toggle span { flex:1; }
+.document-toggle svg { flex-shrink:0; }
+.document-toggle[aria-expanded=true]>svg:last-child { transform:rotate(90deg); }
+#office-documents { padding:4px 16px 12px; border:1px solid #dbe7fa; border-top:0; border-radius:0 0 12px 12px; background:#fff; }
+.document-toggle[aria-expanded=true] { border-radius:12px 12px 0 0; }
+#office-documents p { font-size:14px; font-weight:600; }
+#office-documents ul { padding-left:20px; margin:10px 0; font-size:14px; line-height:1.65; }
+#office-documents li+li { margin-top:6px; }
+.result-entry .result-explanation { color:var(--muted); line-height:1.65; margin:14px 0 24px; }
+.result-entry #result-form { padding:4px 0 0; }
+.result-entry #result-form>.checkbox { margin:20px 0 16px; }
+.route-result .result-overview { margin:20px 0 28px; }
+.route-result .success-note { background:#edf7f2; border:0; align-items:flex-start; }
+.route-result .success-note>svg { flex-shrink:0; margin-top:2px; }
+.route-result .result-empty { color:var(--muted); line-height:1.6; }
+.revision-group { margin:26px 0; }
+.revision-group>h2 { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 12px; font-size:18px; }
+.revision-count { display:grid; place-items:center; min-width:26px; height:26px; padding:0 7px; border-radius:8px; background:#e8effc; color:#54698e; font-size:13px; font-weight:500; }
+.revision-card { margin:12px 0; padding:16px; border:1px solid #e0e8f5; border-radius:16px; background:#fff; }
+.revision-card .diff-task { padding:0 0 14px; font-size:15px; line-height:1.5; }
+.revision-card .diff-task strong { flex:1; }
+.revision-card .diff-task>svg { flex-shrink:0; }
+.revision-card .tile-icon { width:34px; height:34px; flex-shrink:0; }
+.revision-card .diff { margin:0; gap:8px; }
+.revision-card .diff>div { padding:12px; background:#f4f6fa; }
+.revision-card .diff>.revision-after { background:#edf3ff; }
+.revision-status span { display:block; color:#6a7991; font-size:12px; margin-bottom:5px; }
+.revision-status strong { display:block; color:#3f526f; font-size:14px; line-height:1.5; font-weight:600; }
+.revision-after strong { color:#2052b5; }
+.revision-card .revision-field { border-top:1px solid #edf0f5; margin-top:16px; padding-top:14px; }
+.revision-card .revision-field h3 { margin:0 0 10px; font-size:13px; font-weight:600; color:#526480; }
+.revision-card .revision-field p { margin:6px 0 0; line-height:1.6; }
+.revision-current { margin:0; color:#526480; font-size:14px; }
+@media(max-width:420px) { .revision-card .diff { grid-template-columns:1fr; } }
+@media(forced-colors:active) { .student-app input[type=checkbox] { appearance:auto; } .student-app input[type=checkbox]:checked::after { content:none; } }

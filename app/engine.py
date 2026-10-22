@@ -5,6 +5,8 @@ from datetime import date, timedelta
 from app.catalog import i18n
 from app.timeutil import moscow_today, working_date
 from app.workflow import project_reports, shape_task
+from app.task_context import explain_task
+from app.prototype_timing import prototype_rule, prototype_date
 
 
 def reduce_events(profile, events):
@@ -128,7 +130,7 @@ def legal_status(f, biometric=False):
     return "needs_review", ["country_exemptions_and_legal_applicability"]
 
 
-def temporal(spec, facts, rule, allow, now, calendar=None):
+def temporal(spec, facts, rule, allow, now, calendar=None, prototype_timing=False):
     value = deepcopy(spec)
     value.update(
         timezone="Europe/Moscow",
@@ -139,6 +141,11 @@ def temporal(spec, facts, rule, allow, now, calendar=None):
         formula_or_literal=f"{spec['anchor_field']} {spec.get('offset')} {spec['unit']}",
     )
     anchor = facts.get(spec["anchor_field"])
+    if prototype_timing and spec.get("prototype_assumption"):
+        value.update(calculation_basis="prototype", source_url=None, checked_at=None)
+        value["computed_at"] = prototype_date(spec, anchor) if allow and anchor else None
+        value["calculation_status"] = "computed" if value["computed_at"] else "anchor_missing" if not anchor else "applicability_unverified"
+        return value
     # No synthetic working-day calendar or university schedule is used.
     if (
         allow
@@ -156,10 +163,19 @@ def temporal(spec, facts, rule, allow, now, calendar=None):
         value["computed_at"] = working_date(anchor, spec["offset"], calendar)
         if value["computed_at"]:
             value["calendar_version"] = calendar["version"]
+    value["calculation_status"] = (
+        "computed" if value["computed_at"] else
+        "applicability_unverified" if not allow or spec["kind"] == "legal_deadline" else
+        "anchor_missing" if not anchor and not spec.get("absolute_date") else
+        "working_calendar_unavailable" if spec["unit"] == "working" else
+        "office_schedule_unavailable" if spec["unit"] == "hours" else "literal_only"
+    )
     return value
 
 
-def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calendar=None):
+def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calendar=None, prototype_timing=False):
+    if prototype_timing:
+        rules = [prototype_rule(rule) for rule in rules]
     today = now or moscow_today()
     f = project_reports(reduce_events(profile, events), reports or [])
     arrived = bool(f.get("entry_at")) or f.get("arrival_status") == "arrived"
@@ -285,6 +301,8 @@ def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calen
             ):
                 applies = False
             status, missing = legal_status(f, family == "M06")
+            if prototype_timing and missing == ["country_exemptions_and_legal_applicability"]:
+                status, missing = "actionable", []
             if family == "M05":
                 episode = f["_entry_episode"]
                 applies &= not bool(f.get("last_medical_completed_at"))
@@ -361,6 +379,7 @@ def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calen
                 status == "actionable" or s["kind"] == "document_expiry",
                 today,
                 calendar,
+                prototype_timing,
             )
             for s in specs
         ]
@@ -412,6 +431,7 @@ def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calen
             "eligibility_confidence": rule["eligibility_confidence"],
             "formula_confidence": "P" if dates else "U",
             "demo_model": rule.get("source_type") == "demo_model",
+            "prototype_timing": rule.get("prototype_timing"),
             "document_previously_known": family == "M04" and bool(f.get("registration_expiry")),
             "auto_completed": (
                 family == "M06" and bool(f.get("fingerprinting_completed"))
@@ -425,6 +445,8 @@ def build_roadmap(user_id, profile, events, rules, now=None, reports=None, calen
             task.update(engine_status=support, missing_fields=support_missing)
             task["result_actions"] = ["question_sent"] if task.get("availability") == "available" and not task.get("auto_completed") else []
         task["eligibility_decision"] = True if task["engine_status"] in ("actionable", "requires_recheck") else "unknown"
+        if process:
+            explain_task(task, f)
         decisions[-1].update(eligibility=task["eligibility_decision"], engine_status=task["engine_status"], missing_fields=task["missing_fields"])
         tasks.append(task)
         if family == "M04" and rule.get("residence_actions_i18n"):

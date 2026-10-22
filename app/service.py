@@ -73,6 +73,7 @@ def snapshot(db, user_id, override=None):
         events_for(db, user_id),
         rules_for(db, profile.get("university_id"), override),
         reports=reports_for(db, user_id),
+        prototype_timing=getattr(db, "prototype_timing", False),
     )
 
 

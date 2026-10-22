@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_path: str = "data/max_students.sqlite3"
     public_base_url: str = "http://localhost:8000"
     demo_mode: bool = False
+    prototype_timing: bool = False
     max_bot_token: str = ""
     max_bot_username: str = ""
     max_api_url: str = "https://platform-api2.max.ru"

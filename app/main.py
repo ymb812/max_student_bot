@@ -42,6 +42,7 @@ from app.service import (
     reports_for,
     record_result,
     initialize_route,
+    rules_for,
 )
 from app.responses import (
     AuthResponse,
@@ -52,11 +53,14 @@ from app.responses import (
 )
 from app.timeutil import MSK, moscow_today
 from app.workflow import rank_tasks
+from app.error_codes import install_error_handlers
 
 
 def create_app(settings=None):
     settings = settings or Settings()
-    database = Database(settings.database_path)
+    if settings.prototype_timing and not settings.demo_mode:
+        raise ValueError("prototype_timing requires demo_mode")
+    database = Database(settings.database_path, prototype_timing=settings.prototype_timing)
     with database.transaction() as db:
         seed(db)
 
@@ -80,6 +84,7 @@ def create_app(settings=None):
         servers=[{"url": settings.public_base_url}],
     )
     app.state.database = database
+    install_error_handlers(app)
     app.state.settings = settings
     bearer = HTTPBearer(auto_error=False)
 
@@ -159,12 +164,20 @@ def create_app(settings=None):
 
     @app.get("/api/config", tags=["Authentication"])
     def config():
+        with database.transaction() as db:
+            office_documents = {
+                tenant: {"documents_i18n": rule["documents_i18n"], "office_name_i18n": rule.get("office_name_i18n", {})}
+                for tenant in ("sutd", "leti") for rule in rules_for(db, tenant)
+                if rule.get("process") == "office"
+            }
         return {
             "demo_mode": settings.demo_mode,
+            "prototype_timing": settings.prototype_timing,
             "max_bot_username": settings.max_bot_username,
             "llm_enabled": bool(settings.llm_base_url and settings.llm_model),
             "universities": ["sutd", "leti"],
             "privacy_retention_days": settings.retention_days,
+            "office_documents": office_documents,
         }
 
     @app.post("/api/auth/max", response_model=AuthResponse, tags=["Authentication"])

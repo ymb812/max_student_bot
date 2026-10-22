@@ -71,7 +71,7 @@ async function switchDemoProfile(id) {
         plan = nextPlan;
         lang = profile.language;
         renderProfile();
-        toast(tr('Демо-профиль выбран. Откройте «Мой план».', 'Demo profile selected. Open My roadmap.'));
+        toast(tr('Тестовый профиль выбран. Откройте «План».', 'Test profile selected. Open Plan.'));
     } catch (e) {
         if (created) await api('/me/profile', 'DELETE', undefined, candidate).catch(() => {});
         throw e;

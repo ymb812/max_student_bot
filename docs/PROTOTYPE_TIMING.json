@@ -1,0 +1,1627 @@
+{
+  "version": "hackathon-2026-10-22-v1",
+  "rules": [
+    {
+      "rule_id": "sutd.M01.invitation",
+      "university": "sutd",
+      "family": "M01",
+      "source_snapshot": [
+        {
+          "id": "F6",
+          "source_type": "public_official",
+          "official_url": "https://www.kdmid.ru/cons/visas/conditions-of-entry-foreign-citizens-in-russian-federation/",
+          "title": "Режим въезда по гражданству",
+          "authority": "МИД России",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Режим въезда по гражданству",
+            "en": "Russian consular information: entry conditions by citizenship"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "До въезда. Оформление приглашения",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "До въезда. Оформление приглашения",
+            "en": "Before entry: invitation (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "preparation_start",
+          "owner": "university",
+          "required_or_recommended": "recommended_by_university",
+          "anchor_field": "education_start",
+          "offset": -60,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Примерно за 60 календарных дней до занятий: обратиться за приглашением",
+            "en": "Contact the office about an invitation approximately 60 calendar days before classes"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "preparation_start",
+          "owner": "university",
+          "required_or_recommended": "recommended_by_university",
+          "anchor_field": "education_start",
+          "offset": -60,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Примерно за 60 календарных дней до занятий: обратиться за приглашением",
+            "en": "Contact the office about an invitation approximately 60 calendar days before classes"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "changed": false
+    },
+    {
+      "rule_id": "sutd.M03",
+      "university": "sutd",
+      "family": "M03",
+      "source_snapshot": [
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Миграционный учет",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Миграционный учет",
+            "en": "Migration registration (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "unspecified",
+          "anchor_field": "entry_at",
+          "offset": 2,
+          "unit": "working",
+          "literal": {
+            "ru": "В течение 2 рабочих дней после въезда",
+            "en": "Within 2 working days after entry"
+          },
+          "uncertainty": "verified_working_calendar_unavailable",
+          "unit_original": "unspecified",
+          "unit_effective": "working",
+          "unit_basis": "demo_assumption",
+          "original_spec": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "entry_at",
+            "offset": 2,
+            "unit": "unspecified",
+            "literal": {
+              "ru": "В течение 2 дней после въезда; единицу времени уточнить",
+              "en": "Within 2 days after entry; confirm the unit of time"
+            },
+            "uncertainty": ""
+          },
+          "calendar_version": null,
+          "counting_convention": "exclude_anchor"
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 2,
+          "unit": "working",
+          "literal": {
+            "ru": "В течение 2 рабочих дней после въезда",
+            "en": "Within 2 working days after entry"
+          },
+          "uncertainty": "prototype_assumption",
+          "unit_original": "unspecified",
+          "unit_effective": "working",
+          "unit_basis": "demo_assumption",
+          "original_spec": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "entry_at",
+            "offset": 2,
+            "unit": "unspecified",
+            "literal": {
+              "ru": "В течение 2 дней после въезда; единицу времени уточнить",
+              "en": "Within 2 days after entry; confirm the unit of time"
+            },
+            "uncertainty": ""
+          },
+          "calendar_version": null,
+          "counting_convention": "exclude_anchor",
+          "prototype_original": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "entry_at",
+            "offset": 2,
+            "unit": "working",
+            "literal": {
+              "ru": "В течение 2 рабочих дней после въезда",
+              "en": "Within 2 working days after entry"
+            },
+            "uncertainty": "verified_working_calendar_unavailable",
+            "unit_original": "unspecified",
+            "unit_effective": "working",
+            "unit_basis": "demo_assumption",
+            "original_spec": {
+              "kind": "university_submission_deadline",
+              "owner": "university",
+              "required_or_recommended": "unspecified",
+              "anchor_field": "entry_at",
+              "offset": 2,
+              "unit": "unspecified",
+              "literal": {
+                "ru": "В течение 2 дней после въезда; единицу времени уточнить",
+                "en": "Within 2 days after entry; confirm the unit of time"
+              },
+              "uncertainty": ""
+            },
+            "calendar_version": null,
+            "counting_convention": "exclude_anchor"
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "sutd.M04",
+      "university": "sutd",
+      "family": "M04",
+      "source_snapshot": [
+        {
+          "id": "F3",
+          "source_type": "public_official",
+          "official_url": "https://www.kremlin.ru/acts/bank/24033/print",
+          "title": "109-ФЗ: миграционный учёт",
+          "authority": "Государство",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "109-ФЗ: миграционный учёт",
+            "en": "Federal Law No. 109-FZ: migration registration"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Миграционный учет",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Миграционный учет",
+            "en": "Migration registration (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "occurred_at",
+          "offset": 7,
+          "unit": "working",
+          "literal": {
+            "ru": "Общая база: 7 рабочих дней. Договор, исключения и принимающая сторона не проверены — персональная дата не рассчитана.",
+            "en": "General basis: 7 working days. Treaty, exceptions and host are unverified — no personal date is calculated."
+          },
+          "uncertainty": "",
+          "literal_explains_calculation": true
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "occurred_at",
+          "offset": 7,
+          "unit": "working",
+          "literal": {
+            "ru": "В течение 7 рабочих дней после прибытия по месту проживания",
+            "en": "Within 7 working days of arrival at your accommodation"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "occurred_at",
+            "offset": 7,
+            "unit": "working",
+            "literal": {
+              "ru": "Общая база: 7 рабочих дней. Договор, исключения и принимающая сторона не проверены — персональная дата не рассчитана.",
+              "en": "General basis: 7 working days. Treaty, exceptions and host are unverified — no personal date is calculated."
+            },
+            "uncertainty": "",
+            "literal_explains_calculation": true
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "sutd.M05",
+      "university": "sutd",
+      "family": "M05",
+      "source_snapshot": [
+        {
+          "id": "F1",
+          "source_type": "public_official",
+          "official_url": "https://publication.pravo.gov.ru/document/0001202606100002",
+          "title": "162-ФЗ от 10.06.2026",
+          "authority": "Официальное опубликование",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "162-ФЗ от 10.06.2026",
+            "en": "Federal Law No. 162-FZ of 10 June 2026"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "F2",
+          "source_type": "public_official",
+          "official_url": "https://epp.genproc.gov.ru/ru/proc_50/activity/legal-education/explain/e8585073/",
+          "title": "Разъяснение медицинского правила",
+          "authority": "Прокуратура Московской области",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Разъяснение медицинского правила",
+            "en": "Official explanation of medical examination requirements"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Контакты отдела регистрации и виз",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Контакты отдела регистрации и виз",
+            "en": "Office contacts (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 30,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В исследовании: 30 календарных дней со въезда для подпадающих категорий с 01.09.2026. Исключения и начало отсчёта не проверены для вас.",
+            "en": "Research indicates 30 calendar days from entry for eligible categories from 1 September 2026. Your exemptions and counting basis are unverified."
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 30,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В течение 30 календарных дней после въезда",
+            "en": "Within 30 calendar days after entry"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "entry_at",
+            "offset": 30,
+            "unit": "calendar",
+            "literal": {
+              "ru": "В исследовании: 30 календарных дней со въезда для подпадающих категорий с 01.09.2026. Исключения и начало отсчёта не проверены для вас.",
+              "en": "Research indicates 30 calendar days from entry for eligible categories from 1 September 2026. Your exemptions and counting basis are unverified."
+            },
+            "uncertainty": ""
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "sutd.M06",
+      "university": "sutd",
+      "family": "M06",
+      "source_snapshot": [
+        {
+          "id": "F5",
+          "source_type": "public_official",
+          "official_url": "https://epp.genproc.gov.ru/ru/proc_64/activity/legal-education/explain/e677934/",
+          "title": "Дактилоскопия студентов",
+          "authority": "Прокуратура",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Дактилоскопия студентов",
+            "en": "Official explanation of fingerprinting for students"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Контакты отдела регистрации и виз",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Контакты отдела регистрации и виз",
+            "en": "Office contacts (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 90,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В исследовании: 90 календарных дней со въезда для подпадающих категорий, однократно. Исключения не проверены для вас.",
+            "en": "Research indicates 90 calendar days from entry for eligible categories, once. Your exemptions are unverified."
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 90,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В течение 90 календарных дней после въезда",
+            "en": "Within 90 calendar days after entry"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "entry_at",
+            "offset": 90,
+            "unit": "calendar",
+            "literal": {
+              "ru": "В исследовании: 90 календарных дней со въезда для подпадающих категорий, однократно. Исключения не проверены для вас.",
+              "en": "Research indicates 90 calendar days from entry for eligible categories, once. Your exemptions are unverified."
+            },
+            "uncertainty": ""
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "sutd.M07",
+      "university": "sutd",
+      "family": "M07",
+      "source_snapshot": [
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Продление срока временного пребывания",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Продление срока временного пребывания",
+            "en": "Extending your stay (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "recommended_by_university",
+          "anchor_field": "visa_expiry",
+          "offset": -60,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Рекомендуемый вузом срок обращения: за 60 календарных дней до окончания визы",
+            "en": "University recommendation: contact the office 60 calendar days before visa expiry"
+          },
+          "uncertainty": ""
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "visa_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание визы: факт по данным пользователя",
+            "en": "Visa expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "recommended_by_university",
+          "anchor_field": "visa_expiry",
+          "offset": -60,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Рекомендуемый вузом срок обращения: за 60 календарных дней до окончания визы",
+            "en": "University recommendation: contact the office 60 calendar days before visa expiry"
+          },
+          "uncertainty": ""
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "visa_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание визы: факт по данным пользователя",
+            "en": "Visa expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "changed": false
+    },
+    {
+      "rule_id": "sutd.M08",
+      "university": "sutd",
+      "family": "M08",
+      "source_snapshot": [
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Продление срока временного пребывания",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Продление срока временного пребывания",
+            "en": "Extending your stay (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "recommended_by_university",
+          "anchor_field": "registration_expiry",
+          "offset": -50,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Рекомендуемый вузом срок: за 50 календарных дней, только для регистрации по общежитию",
+            "en": "University recommendation: 50 calendar days before expiry, for dormitory registration only"
+          },
+          "uncertainty": ""
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "registration_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание регистрации: факт по данным пользователя",
+            "en": "Registration expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "recommended_by_university",
+          "anchor_field": "registration_expiry",
+          "offset": -50,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Рекомендуемый вузом срок: за 50 календарных дней, только для регистрации по общежитию",
+            "en": "University recommendation: 50 calendar days before expiry, for dormitory registration only"
+          },
+          "uncertainty": ""
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "registration_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание регистрации: факт по данным пользователя",
+            "en": "Registration expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "changed": false
+    },
+    {
+      "rule_id": "sutd.M10",
+      "university": "sutd",
+      "family": "M10",
+      "source_snapshot": [
+        {
+          "id": "F1",
+          "source_type": "public_official",
+          "official_url": "https://publication.pravo.gov.ru/document/0001202606100002",
+          "title": "162-ФЗ от 10.06.2026",
+          "authority": "Официальное опубликование",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "162-ФЗ от 10.06.2026",
+            "en": "Federal Law No. 162-FZ of 10 June 2026"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "F2",
+          "source_type": "public_official",
+          "official_url": "https://epp.genproc.gov.ru/ru/proc_50/activity/legal-education/explain/e8585073/",
+          "title": "Разъяснение медицинского правила",
+          "authority": "Прокуратура Московской области",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Разъяснение медицинского правила",
+            "en": "Official explanation of medical examination requirements"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "S1",
+          "source_type": "public_official",
+          "official_url": "https://prouniver.ru/foreign/visa/",
+          "title": "СПбГУПТД: виза и миграционный учёт",
+          "authority": "СПбГУПТД",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Контакты отдела регистрации и виз",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Сверьте вузовскую инструкцию для этого шага. Она не подтверждает все персональные правовые условия.",
+            "en": "Check the university instructions for this step. They do not confirm every personal legal condition."
+          },
+          "section_label_i18n": {
+            "ru": "Контакты отдела регистрации и виз",
+            "en": "Office contacts (Russian page)"
+          },
+          "title_i18n": {
+            "ru": "СПбГУПТД: виза и миграционный учёт",
+            "en": "SUTD: visas and migration registration"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "last_medical_completed_at",
+          "offset": null,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В исследовании: после года со дня предыдущего осмотра — следующее 30-дневное окно. Применимость, переходные случаи и формула года требуют проверки.",
+            "en": "Research indicates a 30-day window after one year from the previous examination. Applicability, transitional cases and year-counting need verification."
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "last_medical_completed_at",
+          "offset": null,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В течение 30 календарных дней после годовщины предыдущего медосмотра",
+            "en": "Within 30 calendar days after the anniversary of your previous medical examination"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "last_medical_completed_at",
+            "offset": null,
+            "unit": "calendar",
+            "literal": {
+              "ru": "В исследовании: после года со дня предыдущего осмотра — следующее 30-дневное окно. Применимость, переходные случаи и формула года требуют проверки.",
+              "en": "Research indicates a 30-day window after one year from the previous examination. Applicability, transitional cases and year-counting need verification."
+            },
+            "uncertainty": ""
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1",
+          "prototype_formula": "anniversary_plus_30"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M03",
+      "university": "leti",
+      "family": "M03",
+      "source_snapshot": [
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/po-priezde",
+          "title": "ЛЭТИ: по приезде",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-09-27",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "",
+          "navigation_verified": false,
+          "navigation_checked_at": null,
+          "purpose_i18n": {
+            "ru": "Это инструкция первого обращения после приезда, а не подтверждение комплекта всех процедур.",
+            "en": "This covers the first contact after arrival, not the documents for every procedure."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: по приезде",
+            "en": "LETI: after arrival"
+          },
+          "verification_note_i18n": {
+            "ru": "Повторная прямая проверка страницы 22.10.2026 не удалась. Найдено индексированное содержание; актуальный порядок уточните в отделе.",
+            "en": "Direct rechecking failed on 22 October 2026. Indexed content was found; confirm current arrangements with the office."
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "unspecified",
+          "anchor_field": "arrival_at",
+          "offset": 24,
+          "unit": "hours",
+          "literal": {
+            "ru": "В первые 24 часа после прибытия в Петербург; в выходной — первый рабочий день. График офиса не подтверждён, точная дата не рассчитана.",
+            "en": "Within 24 hours of arrival in St Petersburg; on a non-working day, the first working day. Office schedule is unverified, so no exact deadline is calculated."
+          },
+          "uncertainty": "",
+          "literal_explains_calculation": true
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "required",
+          "anchor_field": "arrival_at",
+          "offset": 24,
+          "unit": "hours",
+          "literal": {
+            "ru": "Не позднее следующего рабочего дня после прибытия в Петербург",
+            "en": "By the next working day after arrival in St Petersburg"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "arrival_at",
+            "offset": 24,
+            "unit": "hours",
+            "literal": {
+              "ru": "В первые 24 часа после прибытия в Петербург; в выходной — первый рабочий день. График офиса не подтверждён, точная дата не рассчитана.",
+              "en": "Within 24 hours of arrival in St Petersburg; on a non-working day, the first working day. Office schedule is unverified, so no exact deadline is calculated."
+            },
+            "uncertainty": "",
+            "literal_explains_calculation": true
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1",
+          "prototype_formula": "next_weekday"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M04",
+      "university": "leti",
+      "family": "M04",
+      "source_snapshot": [
+        {
+          "id": "F3",
+          "source_type": "public_official",
+          "official_url": "https://www.kremlin.ru/acts/bank/24033/print",
+          "title": "109-ФЗ: миграционный учёт",
+          "authority": "Государство",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "109-ФЗ: миграционный учёт",
+            "en": "Federal Law No. 109-FZ: migration registration"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/po-priezde",
+          "title": "ЛЭТИ: по приезде",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-09-27",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "",
+          "navigation_verified": false,
+          "navigation_checked_at": null,
+          "purpose_i18n": {
+            "ru": "Это инструкция первого обращения после приезда, а не подтверждение комплекта всех процедур.",
+            "en": "This covers the first contact after arrival, not the documents for every procedure."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: по приезде",
+            "en": "LETI: after arrival"
+          },
+          "verification_note_i18n": {
+            "ru": "Повторная прямая проверка страницы 22.10.2026 не удалась. Найдено индексированное содержание; актуальный порядок уточните в отделе.",
+            "en": "Direct rechecking failed on 22 October 2026. Indexed content was found; confirm current arrangements with the office."
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "occurred_at",
+          "offset": 7,
+          "unit": "working",
+          "literal": {
+            "ru": "Общая база: 7 рабочих дней. Договор, исключения и принимающая сторона не проверены — персональная дата не рассчитана.",
+            "en": "General basis: 7 working days. Treaty, exceptions and host are unverified — no personal date is calculated."
+          },
+          "uncertainty": "",
+          "literal_explains_calculation": true
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "occurred_at",
+          "offset": 7,
+          "unit": "working",
+          "literal": {
+            "ru": "В течение 7 рабочих дней после прибытия по месту проживания",
+            "en": "Within 7 working days of arrival at your accommodation"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "occurred_at",
+            "offset": 7,
+            "unit": "working",
+            "literal": {
+              "ru": "Общая база: 7 рабочих дней. Договор, исключения и принимающая сторона не проверены — персональная дата не рассчитана.",
+              "en": "General basis: 7 working days. Treaty, exceptions and host are unverified — no personal date is calculated."
+            },
+            "uncertainty": "",
+            "literal_explains_calculation": true
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M05",
+      "university": "leti",
+      "family": "M05",
+      "source_snapshot": [
+        {
+          "id": "F1",
+          "source_type": "public_official",
+          "official_url": "https://publication.pravo.gov.ru/document/0001202606100002",
+          "title": "162-ФЗ от 10.06.2026",
+          "authority": "Официальное опубликование",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "162-ФЗ от 10.06.2026",
+            "en": "Federal Law No. 162-FZ of 10 June 2026"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "F2",
+          "source_type": "public_official",
+          "official_url": "https://epp.genproc.gov.ru/ru/proc_50/activity/legal-education/explain/e8585073/",
+          "title": "Разъяснение медицинского правила",
+          "authority": "Прокуратура Московской области",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Разъяснение медицинского правила",
+            "en": "Official explanation of medical examination requirements"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/po-priezde",
+          "title": "ЛЭТИ: по приезде",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-09-27",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "",
+          "navigation_verified": false,
+          "navigation_checked_at": null,
+          "purpose_i18n": {
+            "ru": "Это инструкция первого обращения после приезда, а не подтверждение комплекта всех процедур.",
+            "en": "This covers the first contact after arrival, not the documents for every procedure."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: по приезде",
+            "en": "LETI: after arrival"
+          },
+          "verification_note_i18n": {
+            "ru": "Повторная прямая проверка страницы 22.10.2026 не удалась. Найдено индексированное содержание; актуальный порядок уточните в отделе.",
+            "en": "Direct rechecking failed on 22 October 2026. Indexed content was found; confirm current arrangements with the office."
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 30,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В исследовании: 30 календарных дней со въезда для подпадающих категорий с 01.09.2026. Исключения и начало отсчёта не проверены для вас.",
+            "en": "Research indicates 30 calendar days from entry for eligible categories from 1 September 2026. Your exemptions and counting basis are unverified."
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 30,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В течение 30 календарных дней после въезда",
+            "en": "Within 30 calendar days after entry"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "entry_at",
+            "offset": 30,
+            "unit": "calendar",
+            "literal": {
+              "ru": "В исследовании: 30 календарных дней со въезда для подпадающих категорий с 01.09.2026. Исключения и начало отсчёта не проверены для вас.",
+              "en": "Research indicates 30 calendar days from entry for eligible categories from 1 September 2026. Your exemptions and counting basis are unverified."
+            },
+            "uncertainty": ""
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M06",
+      "university": "leti",
+      "family": "M06",
+      "source_snapshot": [
+        {
+          "id": "F5",
+          "source_type": "public_official",
+          "official_url": "https://epp.genproc.gov.ru/ru/proc_64/activity/legal-education/explain/e677934/",
+          "title": "Дактилоскопия студентов",
+          "authority": "Прокуратура",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Дактилоскопия студентов",
+            "en": "Official explanation of fingerprinting for students"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/po-priezde",
+          "title": "ЛЭТИ: по приезде",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-09-27",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "",
+          "navigation_verified": false,
+          "navigation_checked_at": null,
+          "purpose_i18n": {
+            "ru": "Это инструкция первого обращения после приезда, а не подтверждение комплекта всех процедур.",
+            "en": "This covers the first contact after arrival, not the documents for every procedure."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: по приезде",
+            "en": "LETI: after arrival"
+          },
+          "verification_note_i18n": {
+            "ru": "Повторная прямая проверка страницы 22.10.2026 не удалась. Найдено индексированное содержание; актуальный порядок уточните в отделе.",
+            "en": "Direct rechecking failed on 22 October 2026. Indexed content was found; confirm current arrangements with the office."
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 90,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В исследовании: 90 календарных дней со въезда для подпадающих категорий, однократно. Исключения не проверены для вас.",
+            "en": "Research indicates 90 calendar days from entry for eligible categories, once. Your exemptions are unverified."
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "entry_at",
+          "offset": 90,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В течение 90 календарных дней после въезда",
+            "en": "Within 90 calendar days after entry"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "entry_at",
+            "offset": 90,
+            "unit": "calendar",
+            "literal": {
+              "ru": "В исследовании: 90 календарных дней со въезда для подпадающих категорий, однократно. Исключения не проверены для вас.",
+              "en": "Research indicates 90 calendar days from entry for eligible categories, once. Your exemptions are unverified."
+            },
+            "uncertainty": ""
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M07",
+      "university": "leti",
+      "family": "M07",
+      "source_snapshot": [
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/migracionnoe-soprovozhdenie",
+          "title": "ЛЭТИ: миграционное сопровождение",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Во время пребывания – продление постановки на миграционный учет",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Проверьте раздел для своего режима въезда и жилья.",
+            "en": "Check the section for your entry type and housing."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: миграционное сопровождение",
+            "en": "LETI: migration support"
+          },
+          "section_label_i18n": {
+            "ru": "Во время пребывания – продление постановки на миграционный учет",
+            "en": "During your stay: registration renewal (Russian page)"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "unspecified",
+          "anchor_field": "visa_expiry",
+          "offset": -45,
+          "unit": "working",
+          "literal": {
+            "ru": "Передайте документы не позже чем за 45 рабочих дней до окончания документа",
+            "en": "Submit documents no later than 45 working days before document expiry"
+          },
+          "uncertainty": "verified_working_calendar_unavailable",
+          "unit_original": "unspecified",
+          "unit_effective": "working",
+          "unit_basis": "demo_assumption",
+          "original_spec": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "visa_expiry",
+            "offset": -45,
+            "unit": "unspecified",
+            "literal": {
+              "ru": "Не позже чем за 45 дней до окончания визы; единица времени не уточнена",
+              "en": "No later than 45 days before visa expiry; time unit unconfirmed"
+            },
+            "uncertainty": ""
+          },
+          "calendar_version": null,
+          "counting_convention": "exclude_anchor"
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "visa_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание визы: факт по данным пользователя",
+            "en": "Visa expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "required",
+          "anchor_field": "visa_expiry",
+          "offset": -45,
+          "unit": "working",
+          "literal": {
+            "ru": "Передайте документы не позже чем за 45 рабочих дней до окончания документа",
+            "en": "Submit documents no later than 45 working days before document expiry"
+          },
+          "uncertainty": "prototype_assumption",
+          "unit_original": "unspecified",
+          "unit_effective": "working",
+          "unit_basis": "demo_assumption",
+          "original_spec": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "visa_expiry",
+            "offset": -45,
+            "unit": "unspecified",
+            "literal": {
+              "ru": "Не позже чем за 45 дней до окончания визы; единица времени не уточнена",
+              "en": "No later than 45 days before visa expiry; time unit unconfirmed"
+            },
+            "uncertainty": ""
+          },
+          "calendar_version": null,
+          "counting_convention": "exclude_anchor",
+          "prototype_original": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "visa_expiry",
+            "offset": -45,
+            "unit": "working",
+            "literal": {
+              "ru": "Передайте документы не позже чем за 45 рабочих дней до окончания документа",
+              "en": "Submit documents no later than 45 working days before document expiry"
+            },
+            "uncertainty": "verified_working_calendar_unavailable",
+            "unit_original": "unspecified",
+            "unit_effective": "working",
+            "unit_basis": "demo_assumption",
+            "original_spec": {
+              "kind": "university_submission_deadline",
+              "owner": "university",
+              "required_or_recommended": "unspecified",
+              "anchor_field": "visa_expiry",
+              "offset": -45,
+              "unit": "unspecified",
+              "literal": {
+                "ru": "Не позже чем за 45 дней до окончания визы; единица времени не уточнена",
+                "en": "No later than 45 days before visa expiry; time unit unconfirmed"
+              },
+              "uncertainty": ""
+            },
+            "calendar_version": null,
+            "counting_convention": "exclude_anchor"
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "visa_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание визы: факт по данным пользователя",
+            "en": "Visa expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M08",
+      "university": "leti",
+      "family": "M08",
+      "source_snapshot": [
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/migracionnoe-soprovozhdenie",
+          "title": "ЛЭТИ: миграционное сопровождение",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-10-22",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "Во время пребывания – продление постановки на миграционный учет",
+          "navigation_verified": true,
+          "navigation_checked_at": "2026-10-22",
+          "purpose_i18n": {
+            "ru": "Проверьте раздел для своего режима въезда и жилья.",
+            "en": "Check the section for your entry type and housing."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: миграционное сопровождение",
+            "en": "LETI: migration support"
+          },
+          "section_label_i18n": {
+            "ru": "Во время пребывания – продление постановки на миграционный учет",
+            "en": "During your stay: registration renewal (Russian page)"
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "unspecified",
+          "anchor_field": "registration_expiry",
+          "offset": -45,
+          "unit": "working",
+          "literal": {
+            "ru": "Передайте документы не позже чем за 45 рабочих дней до окончания документа",
+            "en": "Submit documents no later than 45 working days before document expiry"
+          },
+          "uncertainty": "verified_working_calendar_unavailable",
+          "unit_original": "unspecified",
+          "unit_effective": "working",
+          "unit_basis": "demo_assumption",
+          "original_spec": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "registration_expiry",
+            "offset": -45,
+            "unit": "unspecified",
+            "literal": {
+              "ru": "Не позже чем за 45 дней до окончания регистрации; единица времени не уточнена",
+              "en": "No later than 45 days before registration expiry; time unit unconfirmed"
+            },
+            "uncertainty": ""
+          },
+          "calendar_version": null,
+          "counting_convention": "exclude_anchor"
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "registration_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание регистрации: факт по данным пользователя",
+            "en": "Registration expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "university_submission_deadline",
+          "owner": "university",
+          "required_or_recommended": "required",
+          "anchor_field": "registration_expiry",
+          "offset": -45,
+          "unit": "working",
+          "literal": {
+            "ru": "Передайте документы не позже чем за 45 рабочих дней до окончания документа",
+            "en": "Submit documents no later than 45 working days before document expiry"
+          },
+          "uncertainty": "prototype_assumption",
+          "unit_original": "unspecified",
+          "unit_effective": "working",
+          "unit_basis": "demo_assumption",
+          "original_spec": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "registration_expiry",
+            "offset": -45,
+            "unit": "unspecified",
+            "literal": {
+              "ru": "Не позже чем за 45 дней до окончания регистрации; единица времени не уточнена",
+              "en": "No later than 45 days before registration expiry; time unit unconfirmed"
+            },
+            "uncertainty": ""
+          },
+          "calendar_version": null,
+          "counting_convention": "exclude_anchor",
+          "prototype_original": {
+            "kind": "university_submission_deadline",
+            "owner": "university",
+            "required_or_recommended": "unspecified",
+            "anchor_field": "registration_expiry",
+            "offset": -45,
+            "unit": "working",
+            "literal": {
+              "ru": "Передайте документы не позже чем за 45 рабочих дней до окончания документа",
+              "en": "Submit documents no later than 45 working days before document expiry"
+            },
+            "uncertainty": "verified_working_calendar_unavailable",
+            "unit_original": "unspecified",
+            "unit_effective": "working",
+            "unit_basis": "demo_assumption",
+            "original_spec": {
+              "kind": "university_submission_deadline",
+              "owner": "university",
+              "required_or_recommended": "unspecified",
+              "anchor_field": "registration_expiry",
+              "offset": -45,
+              "unit": "unspecified",
+              "literal": {
+                "ru": "Не позже чем за 45 дней до окончания регистрации; единица времени не уточнена",
+                "en": "No later than 45 days before registration expiry; time unit unconfirmed"
+              },
+              "uncertainty": ""
+            },
+            "calendar_version": null,
+            "counting_convention": "exclude_anchor"
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1"
+        },
+        {
+          "kind": "document_expiry",
+          "owner": "user",
+          "required_or_recommended": "document_fact",
+          "anchor_field": "registration_expiry",
+          "offset": 0,
+          "unit": "calendar",
+          "literal": {
+            "ru": "Окончание регистрации: факт по данным пользователя",
+            "en": "Registration expiry: user-reported document fact"
+          },
+          "uncertainty": ""
+        }
+      ],
+      "changed": true
+    },
+    {
+      "rule_id": "leti.M10",
+      "university": "leti",
+      "family": "M10",
+      "source_snapshot": [
+        {
+          "id": "F1",
+          "source_type": "public_official",
+          "official_url": "https://publication.pravo.gov.ru/document/0001202606100002",
+          "title": "162-ФЗ от 10.06.2026",
+          "authority": "Официальное опубликование",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "162-ФЗ от 10.06.2026",
+            "en": "Federal Law No. 162-FZ of 10 June 2026"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "F2",
+          "source_type": "public_official",
+          "official_url": "https://epp.genproc.gov.ru/ru/proc_50/activity/legal-education/explain/e8585073/",
+          "title": "Разъяснение медицинского правила",
+          "authority": "Прокуратура Московской области",
+          "checked_at": "2026-09-27",
+          "confidence": "C",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "title_i18n": {
+            "ru": "Разъяснение медицинского правила",
+            "en": "Official explanation of medical examination requirements"
+          },
+          "verification_note_i18n": {
+            "ru": "Дата относится к прежней проверке источника. Персональная применимость требует отдельной проверки.",
+            "en": "This date refers to the earlier source review. Personal applicability requires a separate check."
+          }
+        },
+        {
+          "id": "E1",
+          "source_type": "public_official",
+          "official_url": "https://new.etu.ru/ru/home/international/po-priezde",
+          "title": "ЛЭТИ: по приезде",
+          "authority": "ЛЭТИ",
+          "checked_at": "2026-09-27",
+          "confidence": "P",
+          "notes": "Применимость проверяется отдельно / Applicability is assessed separately",
+          "section_label": "",
+          "navigation_verified": false,
+          "navigation_checked_at": null,
+          "purpose_i18n": {
+            "ru": "Это инструкция первого обращения после приезда, а не подтверждение комплекта всех процедур.",
+            "en": "This covers the first contact after arrival, not the documents for every procedure."
+          },
+          "title_i18n": {
+            "ru": "ЛЭТИ: по приезде",
+            "en": "LETI: after arrival"
+          },
+          "verification_note_i18n": {
+            "ru": "Повторная прямая проверка страницы 22.10.2026 не удалась. Найдено индексированное содержание; актуальный порядок уточните в отделе.",
+            "en": "Direct rechecking failed on 22 October 2026. Indexed content was found; confirm current arrangements with the office."
+          }
+        }
+      ],
+      "source_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "last_medical_completed_at",
+          "offset": null,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В исследовании: после года со дня предыдущего осмотра — следующее 30-дневное окно. Применимость, переходные случаи и формула года требуют проверки.",
+            "en": "Research indicates a 30-day window after one year from the previous examination. Applicability, transitional cases and year-counting need verification."
+          },
+          "uncertainty": ""
+        }
+      ],
+      "prototype_deadlines": [
+        {
+          "kind": "legal_deadline",
+          "owner": "state",
+          "required_or_recommended": "required",
+          "anchor_field": "last_medical_completed_at",
+          "offset": null,
+          "unit": "calendar",
+          "literal": {
+            "ru": "В течение 30 календарных дней после годовщины предыдущего медосмотра",
+            "en": "Within 30 calendar days after the anniversary of your previous medical examination"
+          },
+          "uncertainty": "prototype_assumption",
+          "prototype_original": {
+            "kind": "legal_deadline",
+            "owner": "state",
+            "required_or_recommended": "required",
+            "anchor_field": "last_medical_completed_at",
+            "offset": null,
+            "unit": "calendar",
+            "literal": {
+              "ru": "В исследовании: после года со дня предыдущего осмотра — следующее 30-дневное окно. Применимость, переходные случаи и формула года требуют проверки.",
+              "en": "Research indicates a 30-day window after one year from the previous examination. Applicability, transitional cases and year-counting need verification."
+            },
+            "uncertainty": ""
+          },
+          "prototype_assumption": "hackathon-2026-10-22-v1",
+          "prototype_formula": "anniversary_plus_30"
+        }
+      ],
+      "changed": true
+    }
+  ]
+}
