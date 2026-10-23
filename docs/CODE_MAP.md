@@ -1,8 +1,8 @@
 # Карта кода «Рядом»
 
-Обновлено 22.10.2026.
+Обновлено 23.10.2026.
 
-Текущий статус и передача между чатами: [CURRENT_REVIEW.md](CURRENT_REVIEW.md). Код отправлен коммитом `ab8f681`; C01/C02 исправлены лишь частично, A01–A03 открыты. Пользователь сообщил о выкладке; отдельная проверка SHA/режима сервера ещё не зафиксирована. Ниже описана история реализации: фразы «не отправлено» и «не выложено» относятся к моменту соответствующего этапа.
+Текущий статус и передача между чатами: [CURRENT_REVIEW.md](CURRENT_REVIEW.md). A01–A03 исправлены и проверены локально 23.10: [MEDICAL_CLARIFICATION_2026_10_23.md](MEDICAL_CLARIFICATION_2026_10_23.md). `student-copy.js/medicalClarification`, `taskSubjectTitle`, `taskExpectedResult` согласуют заголовок и результат с состоянием; `student.js` уточняет условный срок, общую справочную инструкцию и наличие модели; `student-ui.js` использует тот же заголовок для уточнения и снимков результата/истории. Проверки: `tests/content-minimal.test.cjs`, `scripts/check_medical_clarification.cjs`. Сервер после исправления не выкладывался. Ниже история реализации: прежние статусы относятся к моменту этапа.
 
 Минимальный пакет содержания C01–C03/C05/C07/C08: `CONTENT_MINIMAL_2026_10_22.md`. `student-copy.js/taskInstruction` и `student-ui.js/reviewView` согласуют медицинское уточнение с состоянием; `student.js/taskInformationView`, `taskDetailView`, `eventFormView` уточняют демонстрационное основание, непроверенный срок приглашения ЛЭТИ и назначение даты медосмотра. `catalog.py` уточняет две позиции `sutd.M03`, сохраняя индексы остатка; `adaptive-ui.js/renderOnboarding` разделяет подпись необязательного времени прибытия ЛЭТИ. Проверки: `tests/content-minimal.test.cjs`, `tests/test_content_minimal.py`; фактические результаты и снимки — `../../audits/2026-10-22-content-minimal/REPORT.md`. Правила, формулы и схема данных не менялись; commit/push/deploy не выполнялись.
 

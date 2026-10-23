@@ -79,12 +79,26 @@ function eventPayloadText(type,key,value) {
 function remainingDocuments(t) {
     return t.missing_documents?.length?t.missing_documents.map(i=>content(t.documents_i18n)?.[i]||tr('Позиция из прежнего списка документов','Item from the previous document list')).join('; '):tr('Какие документы ещё нужны — пока не указано','The remaining documents have not been specified');
 }
+function medicalClarification(t) {
+    return ['M05','M06','M10'].includes(t.family)&&['conditional','needs_review'].includes(t.engine_status)&&t.availability!=='past'&&t.user_status!=='completed';
+}
+function taskExpectedResult(t) {
+    return medicalClarification(t)?tr('Ответ отдела о необходимости и порядке процедуры. Получение ответа само по себе не подтверждает применимость требования.','An answer from the office about whether the procedure is needed and how to arrange it. Receiving an answer does not by itself confirm that the requirement applies.'):content(t.expected_result_i18n);
+}
+function taskSubjectTitle(t) {
+    if(medicalClarification(t))return tr(...{
+        M05:['Уточнить необходимость медосмотра','Check whether a medical examination is needed'],
+        M06:['Уточнить необходимость дактилоскопии и фотографирования','Check whether fingerprinting and photographs are needed'],
+        M10:['Уточнить необходимость повторного медосмотра','Check whether a repeat medical examination is needed']
+    }[t.family]);
+    return content(t.title_i18n);
+}
 function taskDisplayTitle(t) {
     if(t.user_status==='completed'&&t.engine_status!=='requires_recheck') {
         if(t.process==='entry_context')return tr('Дата и цель въезда указаны','Entry date and purpose recorded');
         if(t.reported_outcome)return resultActionLabel(t,t.reported_outcome);
     }
-    return content(t.title_i18n);
+    return taskSubjectTitle(t);
 }
 function taskInstruction(t) {
     const outcome=t.reported_outcome, process=t.process;
